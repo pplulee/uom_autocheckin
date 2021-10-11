@@ -1,3 +1,5 @@
+import random
+
 from selenium import webdriver
 import time
 import schedule
@@ -47,11 +49,30 @@ class user:
         try:
             content = driver.find_element_by_xpath("//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            return "未检测到需要签到的项目"
+            print("未检测到需要签到的项目，直接结束进程")
+            exit()
         else:
             return content[-5:]  # 首个任务的时间
 
 
+def modifytime(time):  # 换算时区+随机秒数
+    if (hh := int(time[:2]) + 7) > 24:
+        hh = 24 - hh
+    hh = str(hh)
+    mm = str(int(time[3:]) + random.randrange(0, 10))
+    ss = str(random.randrange(0, 60))
+    return f"{hh}:{mm}:{ss}"
+
+
+def job():
+    userobj.checkin()
+    schedule.clear()
+    schedule.every().day.at(nexttime := modifytime(userobj.getcheckintime())).do(job)
+    print("已设置下次执行时间：", nexttime)
+
+
 userobj = user(details[0], details[1])
-print(userobj.getcheckintime())
-userobj.checkin()
+job()
+while True:
+    schedule.run_pending()
+    time.sleep(1)
