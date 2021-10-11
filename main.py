@@ -22,6 +22,7 @@ class user:
         print("输入密码")
         driver.find_element_by_name('submit').click()
         self.isLogin = True
+        print("完成登录")
 
     def refresh(self):
         print("打开URL")
@@ -30,26 +31,27 @@ class user:
             driver.find_element_by_class_name('c-button')  # 检测登出按钮
             print("已登录，状态正常")
         except BaseException:
-            print("未登陆，开始登陆")
+            print("登录失效，开始登陆")
             self.login()
 
     def checkin(self):
         self.refresh()
         try:
-            driver.find_element_by_name('StudentSelfCheckinSubmit').click()  # 还没抓
+            driver.find_element_by_name('StudentSelfCheckinSubmit').click()
+            print("签到完成")
         except BaseException:
             print("未检测到需要签到的项目")
 
     def getcheckintime(self):
         self.refresh()
         try:
-            content = driver.find_element_by_xpath("//*[contains(text(),'Check-in open at ')]").text  # 还没抓
+            content = driver.find_element_by_xpath("//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            print("未检测到需要签到的项目")
+            return "未检测到需要签到的项目"
         else:
             return content[-5:]  # 首个任务的时间
 
 
 userobj = user(details[0], details[1])
+print(userobj.getcheckintime())
 userobj.checkin()
-# schedule.every().hour.at(":52").do(userobj.signin())
