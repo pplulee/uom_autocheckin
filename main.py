@@ -59,8 +59,11 @@ def modifytime(time):  # 换算时区+随机秒数
     if (hh := int(time[:2]) + 7) > 24:
         hh = 24 - hh
     hh = str(hh)
+    print("DebugHH:", hh)
     mm = str(int(time[3:]) + random.randrange(0, 10))
-    ss = str(random.randrange(0, 60))
+    print("DebugMM:", mm)
+    ss = str(random.randrange(10, 60))
+    print("DebugSS:", ss)
     return f"{hh}:{mm}:{ss}"
 
 
