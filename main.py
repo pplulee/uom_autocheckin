@@ -49,14 +49,15 @@ class user:
         try:
             content = driver.find_element_by_xpath("//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            print("未检测到需要签到的项目，直接结束进程")
-            exit()
+            print("未检测到需要签到的项目，设置下一天执行")
+            schedule.clear()
+            schedule.every().day.at("00:00:00").do(job)
         else:
             return content[-5:]  # 首个任务的时间
 
 
 def modifytime(time):  # 换算时区+随机秒数
-    if (hh := int(time[:2]) + 7) > 24:
+    if (hh := int(time[:2]) + 8) > 24:
         hh = 24 - hh
     hh = str(hh)
     print("DebugHH:", hh)
