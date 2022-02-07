@@ -2,6 +2,8 @@
 
 [Click Here for English Version](README_en.md)
 
+[日本語のバッションはこちらへ](README_jp.md)
+
 ## 这是什么？
 懂得都懂，不懂的说了也不懂，你也别问，利益牵扯太大，说了对你们没好处，我只能说水很深
 
