@@ -1,9 +1,8 @@
 {
-  "username" : "",
-  "password" : "",
-  "time_offset" : 0,
-  "webdriver" : "",
-  "tgbot_enable": 1,
+  "username" : "username",
+  "password" : "password",
+  "webdriver" : "local",
+  "tgbot_enable": 0,
   "tgbot_userid" : "",
   "tgbot_token" : ""
 }

@@ -6,6 +6,10 @@ import time
 import schedule
 import telegram
 
+import datetime
+import pytz
+from tzlocal import get_localzone
+
 
 class Config:
     def __init__(self):
@@ -21,6 +25,9 @@ class Config:
             self.tgbot_enable = True
         else:
             self.tgbot_enable = False
+
+        self.tzlondon = pytz.timezone("Europe/London")  # Time zone
+        self.tzlocal = get_localzone()
 
 
 config = Config()
@@ -96,18 +103,23 @@ class User:
             print("当天没有剩余任务，自动设置下一天运行")
             notification("已完成当天所有签到，自动设置下一天运行")
             schedule.clear()
-            return "00:00:00"
+            return modifytime(0, 0, 0)
         else:
-            return modifytime(content[-5:])  # 首个任务的时间
+            return modifytime(randomtime(content[-5:]))  # 首个任务的时间
 
 
-def modifytime(time):  # 换算时区+随机秒数
-    if (hh := int(time[:2]) + 0) > 24:
-        hh = 24 - hh
-    hh = str(hh)
-    mm = str(int(time[3:]) + random.randrange(0, 10))
-    ss = str(random.randrange(10, 60))
-    return f"{hh}:{mm}:{ss}"
+def randomtime(time):  # 随机时间
+    hh = int(time[:2])
+    mm = int(time[3:]) + random.randrange(0, 10)
+    ss = random.randrange(0, 60)
+    return hh, mm, ss
+
+
+def modifytime(hh, mm, ss):  # 换算时区
+    time = datetime.datetime(2000, 1, 1, hh, mm, ss)
+    time = config.tzlondon.localize(time)
+    time = time.astimezone(config.tzlocal)
+    return time.strftime('%H:%M:%S')
 
 
 def job():
