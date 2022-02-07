@@ -1,28 +1,47 @@
+import json
 import random
 
 from selenium import webdriver
 import time
 import schedule
 
-opt = webdriver.ChromeOptions()
-driver = webdriver.Chrome(options=opt)
 
-# 第一行加username，第二行加password
-details = open('account.txt').read().splitlines()
+class Config:
+    def __init__(self):
+        configfile = open("config.json", "r")
+        self.configdata = json.loads(configfile.read())
+        if self.configdata["webdriver"] == "local":  # 如果webdriver为local，则使用本地
+            self.isremote = False
+        else:
+            self.isremote = True
+        configfile.close()
 
 
-class user:
-    def __init__(self, username, password):
-        self.username = username
-        self.password = password
+config = Config()
+options = webdriver.ChromeOptions()
+if config.isremote:
+    options.add_argument("no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=800,600")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Remote(command_executor=config.configdata["webdriver"],
+                              options=options)
+else:
+    driver = webdriver.Chrome(options=options)
+
+
+class User:
+    def __init__(self):
+        self.username = config.configdata["username"]
+        self.password = config.configdata["password"]
         self.isLogin = False
 
     def login(self):
-        driver.find_element_by_id('username').send_keys(self.username)
+        driver.find_element("id", "username").send_keys(self.username)
         print("输入账号")
-        driver.find_element_by_id('password').send_keys(self.password)
+        driver.find_element("id", "password").send_keys(self.password)
         print("输入密码")
-        driver.find_element_by_name('submit').click()
+        driver.find_element("name", "submit").click()
         self.isLogin = True
         print("完成登录")
 
@@ -30,7 +49,7 @@ class user:
         print("打开URL")
         driver.get('https://my.manchester.ac.uk/MyCheckIn')
         try:
-            driver.find_element_by_class_name('c-button')  # 检测登出按钮
+            driver.find_element("class name", "c-button")  # 检测登出按钮
             print("已登录，状态正常")
         except BaseException:
             print("登录失效，开始登陆")
@@ -39,7 +58,7 @@ class user:
     def checkin(self):
         self.refresh()
         try:
-            driver.find_element_by_name('StudentSelfCheckinSubmit').click()
+            driver.find_element("name", "StudentSelfCheckinSubmit").click()
             print("签到完成")
         except BaseException:
             print("未检测到需要签到的项目")
@@ -47,36 +66,34 @@ class user:
     def getcheckintime(self):
         self.refresh()
         try:
-            content = driver.find_element_by_xpath("//*[contains(text(),'Check-in open at ')]").text
+            content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            print("未检测到需要签到的项目，设置下一天执行")
+            print("当天没有剩余任务，自动设置下一天运行")
             schedule.clear()
-            schedule.every().day.at("00:00:00").do(job)
+            return "00:00:00"
         else:
-            return content[-5:]  # 首个任务的时间
+            return modifytime(content[-5:])  # 首个任务的时间
 
 
 def modifytime(time):  # 换算时区+随机秒数
-    if (hh := int(time[:2]) + 8) > 24:
+    if (hh := int(time[:2]) + 0) > 24:
         hh = 24 - hh
     hh = str(hh)
-    print("DebugHH:", hh)
     mm = str(int(time[3:]) + random.randrange(0, 10))
-    print("DebugMM:", mm)
     ss = str(random.randrange(10, 60))
-    print("DebugSS:", ss)
     return f"{hh}:{mm}:{ss}"
 
 
 def job():
-    userobj.checkin()
+    user.checkin()
     schedule.clear()
-    schedule.every().day.at(nexttime := modifytime(userobj.getcheckintime())).do(job)
+    schedule.every().day.at(nexttime := user.getcheckintime()).do(job)
     print("已设置下次执行时间：", nexttime)
 
 
-userobj = user(details[0], details[1])
+user = User()
 job()
+
 while True:
     schedule.run_pending()
     time.sleep(1)
