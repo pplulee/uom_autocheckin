@@ -1,6 +1,6 @@
 # UoM Auto check-in
 
-[中文版readme在这](README.md)
+[中文版在这](README.md)
 
 ## What's this
 You know the rules, and so do I~ If you don't know, never ask. It's DEEEEEEEEEEP~
@@ -25,3 +25,5 @@ that the program can continue execution afterwards.
 
 ## Frequently asked question
 * If the check in website service is malfunctioning, the program will fail as well.
+
+~~English Version Translator: Tenjin~~
