@@ -4,17 +4,23 @@ import random
 from selenium import webdriver
 import time
 import schedule
+import telegram
 
 
 class Config:
     def __init__(self):
         configfile = open("config.json", "r")
         self.configdata = json.loads(configfile.read())
+        configfile.close()
         if self.configdata["webdriver"] == "local":  # 如果webdriver为local，则使用本地
             self.isremote = False
         else:
             self.isremote = True
-        configfile.close()
+
+        if self.configdata["tgbot_enable"] == 1:
+            self.tgbot_enable = True
+        else:
+            self.tgbot_enable = False
 
 
 config = Config()
@@ -28,6 +34,24 @@ if config.isremote:
                               options=options)
 else:
     driver = webdriver.Chrome(options=options)
+
+
+class TGbot:
+    def __init__(self):
+        self.bot = telegram.Bot(token=config.configdata["tgbot_token"])
+        self.sendmessage("自动签到启动成功")
+
+    def sendmessage(self, content):
+        self.bot.send_message(text=content, chat_id=int(config.configdata["tgbot_userid"]))
+
+
+if config.tgbot_enable:
+    tgbot = TGbot()
+
+
+def notification(content):
+    if config.tgbot_enable:
+        tgbot.sendmessage(content)
 
 
 class User:
@@ -60,6 +84,7 @@ class User:
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()
             print("签到完成")
+            notification("完成了一次签到")  # 加入签到项目的名称
         except BaseException:
             print("未检测到需要签到的项目")
 
@@ -69,6 +94,7 @@ class User:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
             print("当天没有剩余任务，自动设置下一天运行")
+            notification("已完成当天所有签到，自动设置下一天运行")
             schedule.clear()
             return "00:00:00"
         else:
@@ -88,7 +114,8 @@ def job():
     user.checkin()
     schedule.clear()
     schedule.every().day.at(nexttime := user.getcheckintime()).do(job)
-    print("已设置下次执行时间：", nexttime)
+    print(f"已设置下次执行时间：{nexttime}")
+    notification(f"已设置下次执行时间：{nexttime}")
 
 
 user = User()
