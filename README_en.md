@@ -1,4 +1,5 @@
 # UoM Auto check-in
+> Please be aware that this program currently only support Chinese output display
 
 [中文版在这](README.md)
 

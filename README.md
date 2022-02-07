@@ -1,4 +1,5 @@
-# UoM Auto check-in
+# UoM 自动签到
+> 请注意目前本程序仅支持中文输出
 
 [Click Here for English Version](README_en.md)
 

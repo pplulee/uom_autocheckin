@@ -1,4 +1,7 @@
 # UoM オート チェクイン
+> このプログラムはまだ中国語の出力のみをサポートしていることに注意してください、
+> ご不便をかけて申し訳ありません
+
 [中文版在这](README.md)
 
 [Click Here for English Version](README_en.md)
