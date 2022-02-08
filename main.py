@@ -1,13 +1,12 @@
+import datetime
 import json
 import random
-
-from selenium import webdriver
 import time
+
+import pytz
 import schedule
 import telegram
-
-import datetime
-import pytz
+from selenium import webdriver
 from tzlocal import get_localzone
 
 
@@ -105,14 +104,18 @@ class User:
             schedule.clear()
             return modifytime(0, 0, 0)
         else:
-            return modifytime(randomtime(content[-5:]))  # 首个任务的时间
+            classname = driver.find_element("xpath", '//*[@id="skip-links-main-content"]/div[3]/div/div/div[4]/div[''1'
+                                                     ']/div/div[1]/p').text
+            print(f"下一节课是{classname}")
+            notification(f"下一节课是{classname}")
+            return randomtime(content[-5:])  # 首个任务的时间
 
 
 def randomtime(time):  # 随机时间
     hh = int(time[:2])
     mm = int(time[3:]) + random.randrange(0, 10)
     ss = random.randrange(0, 60)
-    return hh, mm, ss
+    return modifytime(hh, mm, ss)
 
 
 def modifytime(hh, mm, ss):  # 换算时区
