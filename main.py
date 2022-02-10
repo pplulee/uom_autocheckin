@@ -5,8 +5,8 @@ import time
 
 import pytz
 import schedule
-import telegram
 from selenium import webdriver
+from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
 
@@ -44,11 +44,16 @@ else:
 
 class TGbot:
     def __init__(self):
-        self.bot = telegram.Bot(token=config.configdata["tgbot_token"])
-        self.sendmessage("自动签到启动成功")
+        self.updater = Updater(config.configdata["tgbot_token"])
+        self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
+        self.sendmessage("程序启动成功")
+        self.updater.start_polling()
 
-    def sendmessage(self, content):
-        self.bot.send_message(text=content, chat_id=int(config.configdata["tgbot_userid"]))
+    def ping(self, bot, update):
+        self.sendmessage("还活着捏")
+
+    def sendmessage(self, text):
+        self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
 
 
 if config.tgbot_enable:
@@ -90,7 +95,7 @@ class User:
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()
             print("签到完成")
-            notification("完成了一次签到")  # 加入签到项目的名称
+            notification("完成了一次签到")
         except BaseException:
             print("未检测到现在可以签到的项目")
 
