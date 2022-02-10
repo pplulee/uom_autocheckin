@@ -79,7 +79,7 @@ class User:
         print("打开URL")
         driver.get('https://my.manchester.ac.uk/MyCheckIn')
         try:
-            driver.find_element("class name", "c-button")  # 检测登出按钮
+            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
             print("已登录，状态正常")
         except BaseException:
             print("登录失效，开始登陆")
@@ -92,7 +92,7 @@ class User:
             print("签到完成")
             notification("完成了一次签到")  # 加入签到项目的名称
         except BaseException:
-            print("未检测到需要签到的项目")
+            print("未检测到现在可以签到的项目")
 
     def getcheckintime(self):
         self.refresh()
@@ -104,10 +104,14 @@ class User:
             schedule.clear()
             return modifytime(0, 0, 0)
         else:
-            classname = driver.find_element("xpath", '//*[@id="skip-links-main-content"]/div[3]/div/div/div[4]/div[''1'
-                                                     ']/div/div[1]/p').text
-            print(f"下一节课是{classname}")
-            notification(f"下一节课是{classname}")
+            try:
+                classname = driver.find_element("xpath",
+                                                '//*[@id="skip-links-main-content"]/div[3]/div/div/div[4]/div[''1'']/div/div[1]/p').text
+            except BaseException:
+                notification("寄！抓取名字失败")
+            else:
+                print(f"下一节课是{classname}")
+                notification(f"下一节课是{classname}")
             return randomtime(content[-5:])  # 首个任务的时间
 
 
@@ -138,4 +142,4 @@ job()
 
 while True:
     schedule.run_pending()
-    time.sleep(1)
+    time.sleep(60)
