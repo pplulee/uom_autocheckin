@@ -1,8 +1,10 @@
 {
-  "username" : "username",
-  "password" : "password",
-  "webdriver" : "local",
+  "username": "",
+  "password": "",
+  "webdriver": "local",
   "tgbot_enable": 0,
-  "tgbot_userid" : "",
-  "tgbot_token" : ""
+  "tgbot_userid": "",
+  "tgbot_token": "",
+  "wxpusher_enable": 0,
+  "wxpusher_uid": ""
 }

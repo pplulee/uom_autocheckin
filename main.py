@@ -4,6 +4,7 @@ import random
 import time
 
 import pytz
+import requests
 import schedule
 from selenium import webdriver
 from telegram.ext import Updater, CommandHandler
@@ -24,6 +25,11 @@ class Config:
             self.tgbot_enable = True
         else:
             self.tgbot_enable = False
+
+        if self.configdata["wxpusher_enable"] == 1:
+            self.wxpusher_enable = True
+        else:
+            self.wxpusher_enable = False
 
         self.tzlondon = pytz.timezone("Europe/London")  # Time zone
         self.tzlocal = get_localzone()
@@ -56,13 +62,28 @@ class TGbot:
         self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
 
 
+class WXpusher:
+    def __init__(self):
+        self.API_TOKEN = "AT_MrNwhC7N9jbt2hmdDXxOaGPkI7OmN8WV"
+        self.baseurl = f"http://wxpusher.zjiecode.com/api/send/message/?appToken={self.API_TOKEN}\
+        &uid={config.configdata['wxpusher_uid']}&content="
+
+    def sendmessage(self, content):
+        requests.get(f"{self.baseurl}{content}")
+
+
 if config.tgbot_enable:
     tgbot = TGbot()
+
+if config.wxpusher_enable:
+    wxpusher = WXpusher()
 
 
 def notification(content):
     if config.tgbot_enable:
         tgbot.sendmessage(content)
+    if config.wxpusher_enable:
+        wxpusher.sendmessage(content)
 
 
 class User:
@@ -123,10 +144,7 @@ class User:
 
 
 def randomtime(time):  # 随机时间
-    hh = int(time[:2])
-    mm = int(time[3:]) + random.randrange(0, 10)
-    ss = random.randrange(0, 60)
-    return modifytime(hh, mm, ss)
+    return modifytime(int(time[:2]), int(time[3:]) + random.randrange(0, 10), random.randrange(0, 60))
 
 
 def modifytime(hh, mm, ss):  # 换算时区
