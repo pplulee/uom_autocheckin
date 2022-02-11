@@ -101,22 +101,24 @@ class User:
 
     def getcheckintime(self):
         self.refresh()
+        classname = None
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
             print("当天没有剩余任务，自动设置下一天运行")
             notification("已完成当天所有签到，自动设置下一天运行")
             schedule.clear()
-            return modifytime(0, 0, 0)
+            return modifytime(6, 0, 0)
         else:
             try:
-                classname = driver.find_element("xpath",
-                                                '//*[@id="skip-links-main-content"]/div[3]/div/div/div[4]/div[''1'']/div/div[1]/p').text
+                classname = driver.find_elements("class name", "u-font-bold")[2].text
             except BaseException:
-                notification("寄！抓取名字失败")
-            else:
-                print(f"下一节课是{classname}")
-                notification(f"下一节课是{classname}")
+                try:
+                    classname = driver.find_elements("class name", "u-font-bold")[3].text
+                except BaseException:
+                    print("课程名抓取失败")
+            print(f"下一节课是{classname}")
+            notification(f"下一节课是{classname}")
             return randomtime(content[-5:])  # 首个任务的时间
 
 
