@@ -52,11 +52,19 @@ class TGbot:
     def __init__(self):
         self.updater = Updater(config.configdata["tgbot_token"])
         self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
-        self.sendmessage("程序启动成功")
+        self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
+        self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
+        self.sendmessage("签到程序启动成功")
         self.updater.start_polling()
 
     def ping(self, bot, update):
         self.sendmessage("还活着捏")
+
+    def nextclass(self, bot, update):
+        self.sendmessage(f"下节课是：{user.next_class}")
+
+    def nexttime(self, bot, update):
+        self.sendmessage(f"下节课的时间：{user.next_time}")
 
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
@@ -67,6 +75,7 @@ class WXpusher:
         self.API_TOKEN = "AT_MrNwhC7N9jbt2hmdDXxOaGPkI7OmN8WV"
         self.baseurl = f"http://wxpusher.zjiecode.com/api/send/message/?appToken={self.API_TOKEN}\
         &uid={config.configdata['wxpusher_uid']}&content="
+        self.sendmessage("签到程序启动成功")
 
     def sendmessage(self, content):
         requests.get(f"{self.baseurl}{content}")
@@ -80,6 +89,7 @@ if config.wxpusher_enable:
 
 
 def notification(content):
+    print(content)
     if config.tgbot_enable:
         tgbot.sendmessage(content)
     if config.wxpusher_enable:
@@ -90,57 +100,49 @@ class User:
     def __init__(self):
         self.username = config.configdata["username"]
         self.password = config.configdata["password"]
-        self.isLogin = False
+        self.next_class = ""
+        self.next_time = ""
 
     def login(self):
         driver.find_element("id", "username").send_keys(self.username)
-        print("输入账号")
         driver.find_element("id", "password").send_keys(self.password)
-        print("输入密码")
         driver.find_element("name", "submit").click()
-        self.isLogin = True
         print("完成登录")
 
     def refresh(self):
-        print("打开URL")
         driver.get('https://my.manchester.ac.uk/MyCheckIn')
         try:
             driver.find_element("class name", "c-button--logout")  # 检测登出按钮
-            print("已登录，状态正常")
+            # print("已登录，状态正常")
         except BaseException:
-            print("登录失效，开始登陆")
+            # print("登录失效，开始登陆")
             self.login()
 
     def checkin(self):
         self.refresh()
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()
-            print("签到完成")
             notification("完成了一次签到")
         except BaseException:
-            print("未检测到现在可以签到的项目")
+            pass
 
     def getcheckintime(self):
         self.refresh()
-        classname = None
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            print("当天没有剩余任务，自动设置下一天运行")
             notification("已完成当天所有签到，自动设置下一天运行")
             schedule.clear()
+            self.next_class = "没有课程"
             return modifytime(6, 0, 0)
         else:
-            try:
-                classname = driver.find_elements("class name", "u-font-bold")[2].text
-            except BaseException:
-                try:
-                    classname = driver.find_elements("class name", "u-font-bold")[3].text
-                except BaseException:
-                    print("课程名抓取失败")
-            print(f"下一节课是{classname}")
-            notification(f"下一节课是{classname}")
-            return randomtime(content[-5:])  # 首个任务的时间
+            if self.next_class == driver.find_elements("class name", "u-font-bold")[2].text:
+                self.next_class = driver.find_elements("class name", "u-font-bold")[3].text
+            else:
+                self.next_class = driver.find_elements("class name", "u-font-bold")[2].text
+            notification(f"下一节课是{self.next_class}")
+            self.next_time = randomtime(content[-5:])  # 首个任务的时间
+            return self.next_time
 
 
 def randomtime(time):  # 随机时间
@@ -151,15 +153,16 @@ def modifytime(hh, mm, ss):  # 换算时区
     time = datetime.datetime(2000, 1, 1, hh, mm, ss)
     time = config.tzlondon.localize(time)
     time = time.astimezone(config.tzlocal)
-    return time.strftime('%H:%M:%S')
+    return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
 
 
 def job():
     user.checkin()
     schedule.clear()
-    schedule.every().day.at(nexttime := user.getcheckintime()).do(job)
-    print(f"已设置下次执行时间：{nexttime}")
-    notification(f"已设置下次执行时间：{nexttime}")
+    nexttime = user.getcheckintime()
+    schedule.every().day.at(nexttime[0]).do(job)
+    print(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
+    notification(f"已设置下次执行时间：{nexttime[1]}")
 
 
 user = User()
@@ -168,3 +171,5 @@ job()
 while True:
     schedule.run_pending()
     time.sleep(60)
+
+driver.quit()
