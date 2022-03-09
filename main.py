@@ -7,6 +7,7 @@ import pytz
 import requests
 import schedule
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
@@ -46,6 +47,7 @@ if config.isremote:
                               options=options)
 else:
     driver = webdriver.Chrome(options=options)
+driver.set_page_load_timeout(30)
 
 
 class TGbot:
@@ -110,13 +112,17 @@ class User:
         print("完成登录")
 
     def refresh(self):
-        driver.get('https://my.manchester.ac.uk/MyCheckIn')
         try:
-            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
-            # print("已登录，状态正常")
-        except BaseException:
-            # print("登录失效，开始登陆")
-            self.login()
+            driver.get('https://my.manchester.ac.uk/MyCheckIn')
+        except TimeoutException:
+            timeout()
+        else:
+            try:
+                driver.find_element("class name", "c-button--logout")  # 检测登出按钮
+                # print("已登录，状态正常")
+            except BaseException:
+                # print("登录失效，开始登陆")
+                self.login()
 
     def checkin(self):
         self.refresh()
@@ -156,6 +162,12 @@ def modifytime(hh, mm, ss):  # 换算时区
     return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
 
 
+def timeout():
+    notification("页面加载超时，已退出")
+    driver.quit()
+    exit()
+
+
 def job():
     user.checkin()
     schedule.clear()
@@ -171,5 +183,3 @@ job()
 while True:
     schedule.run_pending()
     time.sleep(60)
-
-driver.quit()
