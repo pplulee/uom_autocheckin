@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import json
 import random
@@ -11,10 +12,14 @@ from selenium.common.exceptions import TimeoutException
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
+parser = argparse.ArgumentParser(description="configuration file path")
+parser.add_argument("--config_path", default="")
+args = parser.parse_args()
+
 
 class Config:
     def __init__(self):
-        configfile = open("config.json", "r")
+        configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
         self.configdata = json.loads(configfile.read())
         configfile.close()
         if self.configdata["webdriver"] == "local":  # 如果webdriver为local，则使用本地
@@ -98,6 +103,12 @@ def notification(content):
         wxpusher.sendmessage(content)
 
 
+def error(text):
+    notification(text)
+    driver.quit()
+    exit()
+
+
 class User:
     def __init__(self):
         self.username = config.configdata["username"]
@@ -111,11 +122,14 @@ class User:
         driver.find_element("name", "submit").click()
         print("完成登录")
 
-    def refresh(self):
+    def refresh(self, retry=0):
+        retry += 1
+        if retry > 3:
+            error("加载页面失败三次，已退出")
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
         except TimeoutException:
-            timeout()
+            self.refresh(retry)
         else:
             try:
                 driver.find_element("class name", "c-button--logout")  # 检测登出按钮
@@ -124,13 +138,26 @@ class User:
                 # print("登录失效，开始登陆")
                 self.login()
 
-    def checkin(self):
+    def checkin(self, retry=0):
         self.refresh()
+        if retry > 3:
+            error("执行签到失败三次，已退出")
+        retry += 1
         try:
-            driver.find_element("name", "StudentSelfCheckinSubmit").click()
-            notification("完成了一次签到")
-        except BaseException:
-            pass
+            driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
+        except BaseException:  # 无法点击
+            print("未找到签到按钮，检测是否已经成功")
+            try:
+                driver.find_element("xpath", "//*[text()='Check-in successful']")  # 检测是否已经成功
+            except BaseException:
+                print(f"未成功，开始第{retry}次尝试")
+                return self.checkin(retry)
+            else:
+                print("已成功签到")
+                return  # 已经签到成功，结束
+        else:
+            print("成功检测到签到按钮并点击")
+            return notification("完成了一次签到")
 
     def getcheckintime(self):
         self.refresh()
@@ -160,12 +187,6 @@ def modifytime(hh, mm, ss):  # 换算时区
     time = config.tzlondon.localize(time)
     time = time.astimezone(config.tzlocal)
     return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
-
-
-def timeout():
-    notification("页面加载超时，已退出")
-    driver.quit()
-    exit()
 
 
 def job():
