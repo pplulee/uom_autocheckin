@@ -13,14 +13,19 @@ clone后，需先安装pip依赖
 ```pip install -r requirements.txt```
 
 然后修改```config.json```内参数，再运行```main.py```即可
+
 * 若选择本机运行，```webdriver```处填写```local```，并确保安装了对应版本的[ChromeDriver](https://chromedriver.chromium.org/downloads)
-* 若使用远程webdriver，```webdriver```处填写地址。推荐配合[Docker - browserless/chrome](https://registry.hub.docker.com/r/browserless/chrome) 使用
+* 若使用远程webdriver，```webdriver```
+  处填写地址。推荐配合[Docker - browserless/chrome](https://registry.hub.docker.com/r/browserless/chrome) 使用
 
 强烈推荐使用远程webdriver
 
 程序可以自动识别时差并自动调整，无须担心时差问题
 
-完成当天所有签到任务后，会设置一条次日0时的定时任务，在次日继续运行
+完成当天所有签到任务后，会设置一条次日6时的定时任务，在次日继续运行
+
+程序提供了 ```--config_path``` 的启动参数（可选），可以指定配置文件路径。如果不指定，则默认查找```config.json```
 
 ## 常见问题
+
 * 如果网站寄了，程序也会直接寄
