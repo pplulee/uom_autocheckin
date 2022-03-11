@@ -145,17 +145,15 @@ class User:
         retry += 1
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
-        except BaseException:  # 无法点击
-            print("未找到签到按钮，检测是否已经成功")
+        except BaseException:  # 没有按钮
+            return
+        else:
+            self.refresh()
             try:
-                driver.find_element("xpath", "//*[text()='Check-in successful']")  # 检测是否已经成功
+                driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException:
                 print(f"未成功，开始第{retry}次尝试")
                 return self.checkin(retry)
-            else:
-                print("已成功签到")
-                return  # 已经签到成功，结束
-        else:
             print("成功检测到签到按钮并点击")
             return notification("完成了一次签到")
 
