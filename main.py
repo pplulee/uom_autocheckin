@@ -128,9 +128,11 @@ class User:
             error("加载页面失败三次，已退出")
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
+            time.sleep(5)
         except TimeoutException:
             self.refresh(retry)
         else:
+            time.sleep(5)
             try:
                 driver.find_element("class name", "c-button--logout")  # 检测登出按钮
                 # print("已登录，状态正常")
@@ -140,11 +142,13 @@ class User:
 
     def checkin(self, retry=0):
         self.refresh()
+        time.sleep(5)
         if retry > 3:
             error("执行签到失败三次，已退出")
         retry += 1
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
+            time.sleep(5)
         except BaseException:  # 没有按钮
             return
         else:
