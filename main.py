@@ -185,7 +185,8 @@ def randomtime(time):  # 随机时间
 
 
 def modifytime(hh, mm, ss):  # 换算时区
-    time = datetime.datetime(2000, 1, 1, hh, mm, ss)
+    date = datetime.date.today().strftime("%Y/%m/%d").split("/")
+    time = datetime.datetime(int(date[0]), int(date[1]), int(date[2]), hh, mm, ss)
     time = config.tzlondon.localize(time)
     time = time.astimezone(config.tzlocal)
     return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
