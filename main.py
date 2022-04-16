@@ -65,14 +65,16 @@ class TGbot:
         self.updater.start_polling()
 
     def ping(self, bot, update):
+        print("用户通过Telegram发出Telegram")
         self.sendmessage("还活着捏")
 
     def nextclass(self, bot, update):
+        print("telegram发出下节课信息")
         self.sendmessage(f"下节课是：{user.next_class}")
 
     def nexttime(self, bot, update):
+        print("telegram发出下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
-
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
 
