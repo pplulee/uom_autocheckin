@@ -3,6 +3,7 @@ import datetime
 import json
 import random
 import time
+import logging
 
 import pytz
 import requests
@@ -65,15 +66,15 @@ class TGbot:
         self.updater.start_polling()
 
     def ping(self, bot, update):
-        print("用户通过Telegram发出Telegram")
+        info("用户通过Telegram发出Telegram")
         self.sendmessage("还活着捏")
 
     def nextclass(self, bot, update):
-        print("telegram发出下节课信息")
+        info("telegram发出下节课信息")
         self.sendmessage(f"下节课是：{user.next_class}")
 
     def nexttime(self, bot, update):
-        print("telegram发出下节课时间")
+        info("telegram发出下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
@@ -98,15 +99,19 @@ if config.wxpusher_enable:
 
 
 def notification(content):
-    print(content)
+    info(content)
     if config.tgbot_enable:
         tgbot.sendmessage(content)
     if config.wxpusher_enable:
         wxpusher.sendmessage(content)
 
+def info(text):
+    print(text)
+    logging.info(text)
 
 def error(text):
     notification(text)
+    logging.critical(text)
     driver.quit()
     exit()
 
@@ -122,7 +127,7 @@ class User:
         driver.find_element("id", "username").send_keys(self.username)
         driver.find_element("id", "password").send_keys(self.password)
         driver.find_element("name", "submit").click()
-        print("完成登录")
+        info("完成登录")
 
     def refresh(self, retry=0):
         retry += 1
@@ -137,9 +142,9 @@ class User:
             time.sleep(5)
             try:
                 driver.find_element("class name", "c-button--logout")  # 检测登出按钮
-                # print("已登录，状态正常")
+                info("已登录，状态正常")
             except BaseException:
-                # print("登录失效，开始登陆")
+                info("登录失效，开始登陆")
                 self.login()
 
     def checkin(self, retry=0):
@@ -158,9 +163,9 @@ class User:
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException:
-                print(f"未成功，开始第{retry}次尝试")
+                info(f"未成功，开始第{retry}次尝试")
                 return self.checkin(retry)
-            print("成功检测到签到按钮并点击")
+            info("成功检测到签到按钮并点击")
             return notification("完成了一次签到")
 
     def getcheckintime(self):
@@ -199,7 +204,7 @@ def job():
     schedule.clear()
     nexttime = user.getcheckintime()
     schedule.every().day.at(nexttime[0]).do(job)
-    print(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
+    info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
     notification(f"已设置下次执行时间：{nexttime[1]}")
 
 
