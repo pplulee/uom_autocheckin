@@ -213,7 +213,7 @@ def job():
 
 
 def main():
-    info("自动签到开始运行")
+    notification("自动签到开始运行")
     global user
     setup_driver()
     user = User()
