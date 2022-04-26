@@ -43,17 +43,20 @@ class Config:
 
 
 config = Config()
-options = webdriver.ChromeOptions()
-if config.isremote:
-    options.add_argument("no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=800,600")
-    options.add_argument("--disable-dev-shm-usage")
-    driver = webdriver.Remote(command_executor=config.configdata["webdriver"],
-                              options=options)
-else:
-    driver = webdriver.Chrome(options=options)
-driver.set_page_load_timeout(30)
+
+
+def setup_driver():
+    global driver
+    options = webdriver.ChromeOptions()
+    if config.isremote:
+        options.add_argument("no-sandbox")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=800,600")
+        options.add_argument("--disable-dev-shm-usage")
+        driver = webdriver.Remote(command_executor=config.configdata["webdriver"], options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(30)
 
 
 class TGbot:
@@ -62,7 +65,6 @@ class TGbot:
         self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
         self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
         self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
-        self.sendmessage("签到程序启动成功")
         self.updater.start_polling()
 
     def ping(self, bot, update):
@@ -76,6 +78,7 @@ class TGbot:
     def nexttime(self, bot, update):
         info("telegram发出下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
+
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
 
@@ -85,7 +88,6 @@ class WXpusher:
         self.API_TOKEN = "AT_MrNwhC7N9jbt2hmdDXxOaGPkI7OmN8WV"
         self.baseurl = f"http://wxpusher.zjiecode.com/api/send/message/?appToken={self.API_TOKEN}\
         &uid={config.configdata['wxpusher_uid']}&content="
-        self.sendmessage("签到程序启动成功")
 
     def sendmessage(self, content):
         requests.get(f"{self.baseurl}{content}")
@@ -105,15 +107,17 @@ def notification(content):
     if config.wxpusher_enable:
         wxpusher.sendmessage(content)
 
+
 def info(text):
     print(text)
     logging.info(text)
+
 
 def error(text):
     notification(text)
     logging.critical(text)
     driver.quit()
-    exit()
+    main()
 
 
 class User:
@@ -208,9 +212,16 @@ def job():
     notification(f"已设置下次执行时间：{nexttime[1]}")
 
 
-user = User()
-job()
+def main():
+    info("自动签到开始运行")
+    global user
+    setup_driver()
+    user = User()
+    job()
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
 
-while True:
-    schedule.run_pending()
-    time.sleep(60)
+
+if __name__ == '__main__':
+    main()
