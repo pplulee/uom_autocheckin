@@ -1,9 +1,9 @@
 import argparse
 import datetime
 import json
+import logging
 import random
 import time
-import logging
 
 import pytz
 import requests
@@ -100,8 +100,10 @@ if config.wxpusher_enable:
     wxpusher = WXpusher()
 
 
-def notification(content):
+def notification(content, error=False):
     info(content)
+    if error:
+        content = f"[ERROR] {content}"
     if config.tgbot_enable:
         tgbot.sendmessage(content)
     if config.wxpusher_enable:
@@ -113,11 +115,13 @@ def info(text):
     logging.info(text)
 
 
-def error(text):
+def error(text, time_hold=300):
     notification(text)
     logging.critical(text)
     driver.quit()
+    time.sleep(time_hold)
     main()
+    exit()
 
 
 class User:
@@ -128,20 +132,24 @@ class User:
         self.next_time = ""
 
     def login(self):
-        driver.find_element("id", "username").send_keys(self.username)
-        driver.find_element("id", "password").send_keys(self.password)
-        driver.find_element("name", "submit").click()
-        info("完成登录")
+        try:
+            driver.find_element("id", "username").send_keys(self.username)
+            driver.find_element("id", "password").send_keys(self.password)
+            driver.find_element("name", "submit").click()
+        except BaseException:
+            error("登录失败，可能是网站寄了，10分钟后重试", 600)
+            return False
+        else:
+            info("完成登录")
+            return True
 
-    def refresh(self, retry=0):
-        retry += 1
-        if retry > 3:
-            error("加载页面失败三次，已退出")
+    def refresh(self):
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
             time.sleep(5)
-        except TimeoutException:
-            self.refresh(retry)
+        except BaseException:
+            error("网页加载失败，10分钟后重试", 600)
+            return False
         else:
             time.sleep(5)
             try:
@@ -150,13 +158,12 @@ class User:
             except BaseException:
                 info("登录失效，开始登陆")
                 self.login()
+            else:
+                return True
 
-    def checkin(self, retry=0):
+    def checkin(self):
         self.refresh()
         time.sleep(5)
-        if retry > 3:
-            error("执行签到失败三次，已退出")
-        retry += 1
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
             time.sleep(5)
@@ -167,10 +174,10 @@ class User:
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException:
-                info(f"未成功，开始第{retry}次尝试")
-                return self.checkin(retry)
-            info("成功检测到签到按钮并点击")
-            return notification("完成了一次签到")
+                error("签到失败，5分钟后重试", 300)
+                return False
+            notification("完成了一次签到")
+            return True
 
     def getcheckintime(self):
         self.refresh()
