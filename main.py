@@ -48,11 +48,11 @@ config = Config()
 def setup_driver():
     global driver
     options = webdriver.ChromeOptions()
+    options.add_argument("no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=800,600")
+    options.add_argument("--disable-dev-shm-usage")
     if config.isremote:
-        options.add_argument("no-sandbox")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=800,600")
-        options.add_argument("--disable-dev-shm-usage")
         driver = webdriver.Remote(command_executor=config.configdata["webdriver"], options=options)
     else:
         driver = webdriver.Chrome(options=options)
@@ -137,7 +137,7 @@ class User:
             driver.find_element("id", "password").send_keys(self.password)
             driver.find_element("name", "submit").click()
         except BaseException:
-            error("登录失败，可能是网站寄了，10分钟后重试", 600)
+            error("登录失败，可能是网站寄了，30分钟后重试", 1800)
             return False
         else:
             info("完成登录")
@@ -148,7 +148,7 @@ class User:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
             time.sleep(5)
         except BaseException:
-            error("网页加载失败，10分钟后重试", 600)
+            error("网页加载失败，30分钟后重试", 1800)
             return False
         else:
             time.sleep(5)
@@ -211,18 +211,19 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def job():
+    setup_driver()
     user.checkin()
     schedule.clear()
     nexttime = user.getcheckintime()
     schedule.every().day.at(nexttime[0]).do(job)
     info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
     notification(f"已设置下次执行时间：{nexttime[1]}")
+    driver.quit()
 
 
 def main():
     notification("自动签到开始运行")
     global user
-    setup_driver()
     user = User()
     job()
     while True:
