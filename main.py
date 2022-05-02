@@ -48,11 +48,14 @@ config = Config()
 def setup_driver():
     global driver
     options = webdriver.ChromeOptions()
+    options.add_argument("no-sandbox")
+    options.add_argument("--disable-gpu")
+    # options.add_argument("--window-size=800,600")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless") 
+    options.add_argument("--remote-debugging-port=9222")
+    options.add_argument("--remote-debugging-address=0.0.0.0")
     if config.isremote:
-        options.add_argument("no-sandbox")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=800,600")
-        options.add_argument("--disable-dev-shm-usage")
         driver = webdriver.Remote(command_executor=config.configdata["webdriver"], options=options)
     else:
         driver = webdriver.Chrome(options=options)
