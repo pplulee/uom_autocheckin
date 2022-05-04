@@ -26,7 +26,4 @@ The program is optimized to analyse time difference and adjust itself, no need t
 After completing all check-ins in present day, a scheduled task will be automatically set to 12:00AM in the next day, so 
 that the program can continue execution afterwards.
 
-## Frequently asked question
-* If the check in website service is malfunctioning, the program will fail as well.
-
 ~~English Version Translator: Tenjin~~
