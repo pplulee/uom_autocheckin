@@ -9,7 +9,6 @@ import pytz
 import requests
 import schedule
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
@@ -50,8 +49,9 @@ def setup_driver():
     options = webdriver.ChromeOptions()
     options.add_argument("no-sandbox")
     options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=800,600")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                         "Chrome/101.0.4951.54 Safari/537.36")
     if config.isremote:
         driver = webdriver.Remote(command_executor=config.configdata["webdriver"], options=options)
     else:
