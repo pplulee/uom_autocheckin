@@ -47,7 +47,9 @@ config = Config()
 
 def setup_driver():
     global driver
+    userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1"
     options = webdriver.ChromeOptions()
+    options.add_argument(f'user-agent={userAgent}')
     options.add_argument("no-sandbox")
     options.add_argument("--disable-gpu")
     # options.add_argument("--window-size=800,600")
