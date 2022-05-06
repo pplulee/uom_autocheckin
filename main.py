@@ -185,6 +185,11 @@ class User:
             return True
 
     def getcheckintime(self):
+        if datetime.datetime.today().isoweekday() == 6 or datetime.datetime.today().isoweekday() == 7:
+            notification("周末愉快！今天不用上课，好好休息吧~")
+            schedule.clear()
+            self.next_class = "没有课程"
+            return modifytime(6, 0, 0)
         self.refresh()
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
