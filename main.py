@@ -109,10 +109,13 @@ def notification(content, error=False):
     info(content)
     if error:
         content = f"[ERROR] {content}"
-    if config.tgbot_enable:
-        tgbot.sendmessage(content)
-    if config.wxpusher_enable:
-        wxpusher.sendmessage(content)
+    if not (datetime.datetime.today().isoweekday() == 6 or datetime.datetime.today().isoweekday() == 7):    # 如果不是周末则发通知
+        if config.tgbot_enable:
+            tgbot.sendmessage(content)
+        if config.wxpusher_enable:
+            wxpusher.sendmessage(content)
+    else:
+        info("今天是周末，不发通知")
 
 
 def info(text):
