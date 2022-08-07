@@ -27,4 +27,12 @@
 
 その日のすべてのチェックインタスクを完了した場合は、スケジュールされたタスクは翌日の0:00に設定され、翌日も実行され続けます。
 
+## Dockerの使い方(x86_64だけ)
+* Dockerをインストールしてください
+* このレポジトリをクロんしてください
+* 元目録で`docker build -t uom_checkin .`を执行しってください（最後の`.`は必要です）
+* `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`を执行しってください、こちの`xxx=xxx`は
+config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+* 今はログを見ているので、TGBOTまたはWeChatに通知してください
+
 ~~Japanese version translator: Tenjin~~
