@@ -26,7 +26,7 @@ The program is optimized to analyse time difference and adjust itself, no need t
 After completing all check-ins in present day, a scheduled task will be automatically set to 12:00AM in the next day, so 
 that the program can continue execution afterwards.
 
-## Docker Method(x86_64 only)
+## Docker Method(x86_64 and arm64V8 are tested)
 * Install Docker
 * Clone this repository
 * Run `docker build -t uom_checkin .` inside root path(be aware of the last dot!)

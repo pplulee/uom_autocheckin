@@ -26,7 +26,7 @@ clone后，需先安装pip依赖
 
 程序提供了 ```--config_path``` 的启动参数（可选），可以指定配置文件路径。如果不指定，则默认查找```config.json```
 
-## Docker运行方法(仅x86_64架构)
+## Docker运行方法(已测试支持x86_64与arm64v8)
 * 安装Docker
 * 将本项目克隆到本地
 * 在项目根目录执行`docker build -t uom_checkin .`命令(注意后面有个英文句号)
