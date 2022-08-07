@@ -12,31 +12,50 @@ from selenium import webdriver
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
-parser = argparse.ArgumentParser(description="configuration file path")
+parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
+parser.add_argument("--webdriver", default="local")
+parser.add_argument("--username", default="")
+parser.add_argument("--password", default="")
+parser.add_argument("--tgbot_userid", default="")
+parser.add_argument("--tgbot_token", default="")
+parser.add_argument("--wxpusher_uid", default="")
 args = parser.parse_args()
 
 
 class Config:
     def __init__(self):
-        configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
-        self.configdata = json.loads(configfile.read())
-        configfile.close()
-        if self.configdata["webdriver"] == "local":  # 如果webdriver为local，则使用本地
-            self.isremote = False
-        else:
-            self.isremote = True
-
-        if self.configdata["tgbot_enable"] == 1:
-            self.tgbot_enable = True
-        else:
-            self.tgbot_enable = False
-
-        if self.configdata["wxpusher_enable"] == 1:
-            self.wxpusher_enable = True
-        else:
-            self.wxpusher_enable = False
-
+        self.tgbot_enable = False
+        self.wxpusher_enable = False
+        self.isremote = False
+        if args.config_path != "":  # 从配置文件读取
+            configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
+            self.configdata = json.loads(configfile.read())
+            configfile.close()
+            self.username = self.configdata["username"]
+            self.password = self.configdata["password"]
+            if self.configdata["webdriver"] != "local":
+                self.isremote = True
+                self.webdriver = self.configdata["webdriver"]
+            if self.configdata["tgbot_enable"] == 1:
+                self.tgbot_enable = True
+                self.tgbot_userid = self.configdata["tgbot_userid"]
+                self.tgbot_token = self.configdata["tgbot_token"]
+            if self.configdata["wxpusher_enable"] == 1:
+                self.wxpusher_enable = True
+                self.wxpusher_uid = self.configdata["wxpusher_uid"]
+        else:  # 从命令行参数读取
+            if args.webdriver != "local":
+                self.webdriver = args.webdriver
+                self.isremote = True
+            self.username = args.username
+            self.password = args.password
+            if args.tgbot_userid != "" and args.tgbot_token != "":
+                self.tgbot_enable = True
+                self.tgbot_userid = args.tgbot_userid
+                self.tgbot_token = args.tgbot_token
+            if args.wxpusher_uid != "":
+                self.wxpusher_uid = args.wxpusher_uid
         self.tzlondon = pytz.timezone("Europe/London")  # Time zone
         self.tzlocal = get_localzone()
 
@@ -53,7 +72,7 @@ def setup_driver():
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                          "Chrome/101.0.4951.54 Safari/537.36")
     if config.isremote:
-        driver = webdriver.Remote(command_executor=config.configdata["webdriver"], options=options)
+        driver = webdriver.Remote(command_executor=config.webdriver, options=options)
     else:
         driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(30)
@@ -61,7 +80,7 @@ def setup_driver():
 
 class TGbot:
     def __init__(self):
-        self.updater = Updater(config.configdata["tgbot_token"])
+        self.updater = Updater(config.tgbot_token)
         self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
         self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
         self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
@@ -80,14 +99,14 @@ class TGbot:
         self.sendmessage(f"下节课的时间：{user.next_time}")
 
     def sendmessage(self, text):
-        self.updater.bot.send_message(chat_id=config.configdata["tgbot_userid"], text=text)
+        self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
 
 
 class WXpusher:
     def __init__(self):
         self.API_TOKEN = "AT_MrNwhC7N9jbt2hmdDXxOaGPkI7OmN8WV"
         self.baseurl = f"http://wxpusher.zjiecode.com/api/send/message/?appToken={self.API_TOKEN}\
-        &uid={config.configdata['wxpusher_uid']}&content="
+        &uid={config.wxpusher_uid}&content="
 
     def sendmessage(self, content):
         requests.get(f"{self.baseurl}{content}")
@@ -126,8 +145,8 @@ def error(text, time_hold=300):
 
 class User:
     def __init__(self):
-        self.username = config.configdata["username"]
-        self.password = config.configdata["password"]
+        self.username = config.username
+        self.password = config.password
         self.next_class = ""
         self.next_time = ""
 
