@@ -39,4 +39,4 @@ config.json中的配置填写即可，如 `-e username=u11451hh -e password=1234
 config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
 
 
-### 目前Docker方法暂不支持查看日志，请配置推送以查看签到结果
+### 使用`docker logs uom_checkin`查看运行日志

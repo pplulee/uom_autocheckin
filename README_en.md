@@ -39,6 +39,6 @@ in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e w
 in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
 
 
-### Log function is not yet supported for Docker methods, so please use the push function to send the result to your telegram bot or WeChat
+### Use `docker logs uom_checkin` to see the logs
 
 English Version Translator: [LTY_CK_TS](https://github.com/sahuidhsu)
