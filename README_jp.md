@@ -1,5 +1,5 @@
 # UoM オート チェクイン
-> このプログラムはまだ中国語の出力のみをサポートしていることに注意してください、
+> このプログラムはまだ中国語だけの出力のみをサポートしていることにご注意してください、
 > ご不便をかけて申し訳ありません
 
 [中文版在这](README.md)
@@ -25,14 +25,20 @@
 
 このプログラムは時間差は自動的に認識され、自動的に調整されます、手動調整は必要ありません
 
-その日のすべてのチェックインタスクを完了した場合は、スケジュールされたタスクは翌日の0:00に設定され、翌日も実行され続けます。
+その日のすべてのチェックインタスクを完了した場合は、スケジュールされたタスクは翌日の6:00に設定され、翌日も実行され続けます。
 
 ## Dockerの使い方(x86_64とarm64V8はテストされています)
-* Dockerをインストールしてください
-* このレポジトリをクロんしてください
-* 元目録で`docker build -t uom_checkin .`を执行しってください（最後の`.`は必要です）
+### 1.Docker Hubを使う場合
+* `docker pull sahuidhsu/uom_autocheckin`を执行してください（ARM64の方は`sahuidhsu/uom_autocheckin:arm64`を使ってください）
+* `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`を执行しってください（ARM64の方は最後に`:arm64`を追加してください）、こちの`xxx=xxx`は
+config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+
+### 2.自分でDockerfileを使う場合
+* このレポジトリをクロんして、 元目録で`docker build -t uom_checkin .`を执行しってください（最後の`.`は必要です）
 * `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`を执行しってください、こちの`xxx=xxx`は
 config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
-* 今はログを見ているので、TGBOTまたはWeChatに通知してください
 
-~~Japanese version translator: Tenjin~~
+
+### Dockerを使い方は今はログを見ているので、TGBOTまたはWeChatに通知してください
+
+Japanese version translator: [LTY_CK_TS](https://github.com/sahuidhsu)

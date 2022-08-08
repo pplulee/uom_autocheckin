@@ -23,15 +23,22 @@ STRONGLY RECOMMEND TO USE REMOTE WEBDRIVER
 
 The program is optimized to analyse time difference and adjust itself, no need to change manually
 
-After completing all check-ins in present day, a scheduled task will be automatically set to 12:00AM in the next day, so 
+After completing all check-ins in present day, a scheduled task will be automatically set to 6:00AM in the next day, so 
 that the program can continue execution afterwards.
 
 ## Docker Method(x86_64 and arm64V8 are tested)
-* Install Docker
-* Clone this repository
-* Run `docker build -t uom_checkin .` inside root path(be aware of the last dot!)
+### 1.Use Docker Hub
+* Use `docker pull sahuidhsu/uom_autocheckin` to download the latest version of the image(ARM64 users please use `sahuidhsu/uom_autocheckin:arm64` instead)
+* Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`(ARM64 users please add `:arm64` at the end), here the`xxx=xxx`is
+in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+
+
+### 2.Use Dockerfile locally
+* Clone this repository, then run `docker build -t uom_checkin .` inside root path(be aware of the last dot!)
 * Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`, here the`xxx=xxx`is
 in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
-* Log function is not supported, so please use the push function to send the result to your telegram bot or WeChat
 
-~~English Version Translator: Tenjin~~
+
+### Log function is not yet supported for Docker methods, so please use the push function to send the result to your telegram bot or WeChat
+
+English Version Translator: [LTY_CK_TS](https://github.com/sahuidhsu)
