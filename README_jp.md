@@ -39,6 +39,6 @@ config.jsonのフォマートと同じです，例えば `-e username=u11451hh -
 config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
 
 
-### Dockerを使い方は今はログを見ているので、TGBOTまたはWeChatに通知してください
+### `docker logs uom_checkin`で実行中のコンテナのログを表示できます
 
 Japanese version translator: [LTY_CK_TS](https://github.com/sahuidhsu)
