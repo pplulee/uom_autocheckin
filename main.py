@@ -28,7 +28,7 @@ class Config:
         self.tgbot_enable = False
         self.wxpusher_enable = False
         self.isremote = False
-        if args.config_path != "":  # 从配置文件读取
+        if args.username == "":  # 读取配置文件
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
             self.configdata = json.loads(configfile.read())
             configfile.close()
