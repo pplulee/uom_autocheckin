@@ -31,12 +31,12 @@
 ### 1.Docker Hubを使う場合
 * `docker pull sahuidhsu/uom_autocheckin`を执行してください（ARM64の方は`sahuidhsu/uom_autocheckin:arm64`を使ってください）
 * `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`を执行しってください（ARM64の方は最後に`:arm64`を追加してください）、こちの`xxx=xxx`は
-config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 ### 2.自分でDockerfileを使う場合
 * このレポジトリをクロんして、 元目録で`docker build -t uom_checkin .`を执行しってください（最後の`.`は必要です）
 * `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`を执行しってください、こちの`xxx=xxx`は
-config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+config.jsonのフォマートと同じです，例えば `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 
 ### `docker logs uom_checkin`で実行中のコンテナのログを表示できます

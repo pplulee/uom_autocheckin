@@ -30,13 +30,13 @@ that the program can continue execution afterwards.
 ### 1.Use Docker Hub
 * Use `docker pull sahuidhsu/uom_autocheckin` to download the latest version of the image(ARM64 users please use `sahuidhsu/uom_autocheckin:arm64` instead)
 * Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`(ARM64 users please add `:arm64` at the end), here the`xxx=xxx`is
-in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 
 ### 2.Use Dockerfile locally
 * Clone this repository, then run `docker build -t uom_checkin .` inside root path(be aware of the last dot!)
 * Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`, here the`xxx=xxx`is
-in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 
 ### Use `docker logs uom_checkin` to see the logs

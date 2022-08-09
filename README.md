@@ -30,13 +30,13 @@ clone后，需先安装pip依赖
 ### 1.使用Docker Hub中版本
 * 使用`docker pull sahuidhsu/uom_autocheckin`来拉取镜像（ARM64架构请拉取`sahuidhsu/uom_autocheckin:arm64`）
 * 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`命令启动项目（ARM64架构最后面加上`:arm64`） 此处的`xxx=xxx`按
-config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 ### 2.本地制作Docker镜像
 * 将本项目克隆到本地
 * 在项目根目录执行`docker build -t uom_checkin .`命令进行安装(注意后面有个英文句号)
 * 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`命令启动项目 此处的`xxx=xxx`按
-config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=local -e tgbot_token=xxx...`
+config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 
 ### 使用`docker logs uom_checkin`查看运行日志
