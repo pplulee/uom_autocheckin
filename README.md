@@ -25,14 +25,15 @@ clone后，需先安装pip依赖
 完成当天所有签到任务后，会设置一条次日6时的定时任务，在次日继续运行
 
 程序提供了 ```--config_path``` 的启动参数（可选），可以指定配置文件路径。如果不指定，则默认查找```config.json```
+### 现也支持直接使用 `--username=xxx --password=xxx...`的写法，变量名与配置文件中的变量名一致
 
 ## Docker运行方法(已测试支持x86_64与arm64v8)
-### 1.使用Docker Hub中版本
+### 1.使用Docker Hub中版本（推荐）
 * 使用`docker pull sahuidhsu/uom_autocheckin`来拉取镜像（ARM64架构请拉取`sahuidhsu/uom_autocheckin:arm64`）
 * 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`命令启动项目（ARM64架构最后面加上`:arm64`） 此处的`xxx=xxx`按
 config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
-### 2.本地制作Docker镜像
+### 2.本地制作Docker镜像（其它架构自行编译，不保证一定成功）
 * 将本项目克隆到本地
 * 在项目根目录执行`docker build -t uom_checkin .`命令进行安装(注意后面有个英文句号)
 * 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... uom_checkin`命令启动项目 此处的`xxx=xxx`按
