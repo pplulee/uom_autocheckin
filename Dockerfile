@@ -1,7 +1,8 @@
 FROM python:slim-bullseye
 
-ADD . /app
 WORKDIR /app
+ADD main.py /app
+ADD requirements.txt /app
 
 RUN pip install -r requirements.txt
 
