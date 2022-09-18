@@ -1,13 +1,14 @@
 import argparse
 import datetime
-import json
 import logging
-import random
+import os.path
 import time
+from json import loads
+from random import randint
 
 import pytz
-import requests
 import schedule
+from requests import get
 from selenium import webdriver
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
@@ -28,9 +29,9 @@ class Config:
         self.tgbot_enable = False
         self.wxpusher_enable = False
         self.isremote = False
-        if args.username == "":  # 读取配置文件
+        if args.config_path != "" or os.path.exists("config.json"):  # 读取配置文件
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
-            self.configdata = json.loads(configfile.read())
+            self.configdata = loads(configfile.read())
             configfile.close()
             self.username = self.configdata["username"]
             self.password = self.configdata["password"]
@@ -56,26 +57,17 @@ class Config:
                 self.tgbot_token = args.tgbot_token
             if args.wxpusher_uid != "":
                 self.wxpusher_uid = args.wxpusher_uid
+        if self.username == "" or self.password == "":
+            print("用户名或密码为空")
+            exit()
+        if self.webdriver == "":
+            print("webdriver为空")
+            exit()
         self.tzlondon = pytz.timezone("Europe/London")  # Time zone
         self.tzlocal = get_localzone()
 
 
 config = Config()
-
-
-def setup_driver():
-    global driver
-    options = webdriver.ChromeOptions()
-    options.add_argument("no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                         "Chrome/101.0.4951.54 Safari/537.36")
-    if config.isremote:
-        driver = webdriver.Remote(command_executor=config.webdriver, options=options)
-    else:
-        driver = webdriver.Chrome(options=options)
-    driver.set_page_load_timeout(30)
 
 
 class TGbot:
@@ -87,15 +79,15 @@ class TGbot:
         self.updater.start_polling()
 
     def ping(self, bot, update):
-        info("用户通过Telegram发出Telegram")
+        info("Telegram 检测存活")
         self.sendmessage("还活着捏")
 
     def nextclass(self, bot, update):
-        info("telegram发出下节课信息")
+        info("Telegram 下节课信息")
         self.sendmessage(f"下节课是：{user.next_class}")
 
     def nexttime(self, bot, update):
-        info("telegram发出下节课时间")
+        info("Telegram 下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
 
     def sendmessage(self, text):
@@ -109,7 +101,7 @@ class WXpusher:
         &uid={config.wxpusher_uid}&content="
 
     def sendmessage(self, content):
-        requests.get(f"{self.baseurl}{content}")
+        get(f"{self.baseurl}{content}")
 
 
 if config.tgbot_enable:
@@ -143,50 +135,83 @@ def error(text, time_hold=300):
     exit()
 
 
+def setup_driver():
+    global driver
+    options = webdriver.ChromeOptions()
+    options.add_argument("no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument('ignore-certificate-errors')
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                         "Chrome/101.0.4951.54 Safari/537.36")
+    try:
+        if config.isremote:
+            driver = webdriver.Remote(command_executor=config.webdriver, options=options)
+        else:
+            driver = webdriver.Chrome(options=options)
+    except Exception as e:
+        error(f"Webdriver失败：{e}")
+    else:
+        driver.set_page_load_timeout(15)
+
+
 class User:
     def __init__(self):
         self.username = config.username
         self.password = config.password
-        self.next_class = ""
-        self.next_time = ""
+        self.next_class = "未获取"
+        self.next_time = "未获取"
+
+    def check_login(self):
+        self.refresh()
+        try:
+            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
+        except BaseException:
+            return False  # 未找到登出按钮
+        else:
+            return True  # 找到登出按钮
 
     def login(self):
-        try:
-            driver.find_element("id", "username").send_keys(self.username)
-            driver.find_element("id", "password").send_keys(self.password)
-            driver.find_element("name", "submit").click()
-        except BaseException:
-            error("登录失败，可能是网站寄了，30分钟后重试", 1800)
-            return False
-        else:
-            info("完成登录")
-            return True
+        login_count = 0
+        while not (self.check_login()):
+            login_count += 1
+            if login_count > 3:
+                notification("登陆失败次数过多，退出程序")
+                exit()
+            info(f"开始第{login_count}次登录")
+            try:
+                driver.find_element("id", "username").send_keys(self.username)
+                driver.find_element("id", "password").send_keys(self.password)
+                driver.find_element("name", "submit").click()
+            except BaseException:
+                error("登录失败，可能是网站寄了，30分钟后重试", 1800)
+                return False
+            else:
+                try:
+                    driver.find_element("xpath", "//*[@id='msg']")
+                except BaseException:
+                    pass
+                else:
+                    notification("用户名或密码错误，退出程序")
+                    exit()
+        return True
 
     def refresh(self):
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
-            time.sleep(5)
+            time.sleep(2)
         except BaseException:
             error("网页加载失败，30分钟后重试", 1800)
             return False
         else:
-            time.sleep(5)
-            try:
-                driver.find_element("class name", "c-button--logout")  # 检测登出按钮
-                info("已登录，状态正常")
-            except BaseException:
-                info("登录失效，开始登陆")
-                self.login()
-            else:
-                return True
+            return True
 
     def checkin(self):
-        self.refresh()
-        time.sleep(5)
+        self.login()
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
-            time.sleep(5)
-        except BaseException:  # 没有按钮
+            time.sleep(3)
+        except BaseException:  # 没有可签到项目
             return
         else:
             self.refresh()
@@ -203,22 +228,26 @@ class User:
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            notification("已完成当天所有签到，自动设置下一天运行")
+            notification("已完成当天所有签到\n自动设置下一天运行")
             schedule.clear()
-            self.next_class = "没有课程"
+            self.next_class = "未获取"
             return modifytime(6, 0, 0)
         else:
-            if self.next_class == driver.find_elements("class name", "u-font-bold")[2].text:
-                self.next_class = driver.find_elements("class name", "u-font-bold")[3].text
-            else:
+            try:
+                driver.find_element("xpath", "//*[text()='Check-in successful']")
+            except BaseException:
+                # 第一个项目未签到
                 self.next_class = driver.find_elements("class name", "u-font-bold")[2].text
-            notification(f"下一节课是{self.next_class}")
+            else:
+                # 第一个项目已签到，抓取下一个项目的时间
+                self.next_class = driver.find_elements("class name", "u-font-bold")[3].text
             self.next_time = randomtime(content[-5:])  # 首个任务的时间
+            notification(f"下一节课是{self.next_class}\n签到时间{self.next_time[1]}")
             return self.next_time
 
 
 def randomtime(time):  # 随机时间
-    return modifytime(int(time[:2]), int(time[3:]) + random.randrange(0, 10), random.randrange(0, 60))
+    return modifytime(int(time[:2]), int(time[3:]) + randint(0, 8), randint(0, 59))
 
 
 def modifytime(hh, mm, ss):  # 换算时区
@@ -236,7 +265,6 @@ def job():
     nexttime = user.getcheckintime()
     schedule.every().day.at(nexttime[0]).do(job)
     info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
-    notification(f"已设置下次执行时间：{nexttime[1]}")
     driver.quit()
 
 
