@@ -35,9 +35,7 @@ class Config:
             configfile.close()
             self.username = self.configdata["username"]
             self.password = self.configdata["password"]
-            if self.configdata["webdriver"] != "local":
-                self.isremote = True
-                self.webdriver = self.configdata["webdriver"]
+            self.webdriver = self.configdata["webdriver"]
             if self.configdata["tgbot_enable"] == 1:
                 self.tgbot_enable = True
                 self.tgbot_userid = self.configdata["tgbot_userid"]
@@ -46,9 +44,7 @@ class Config:
                 self.wxpusher_enable = True
                 self.wxpusher_uid = self.configdata["wxpusher_uid"]
         else:  # 从命令行参数读取
-            if args.webdriver != "local":
-                self.webdriver = args.webdriver
-                self.isremote = True
+            self.webdriver = args.webdriver
             self.username = args.username
             self.password = args.password
             if args.tgbot_userid != "" and args.tgbot_token != "":
@@ -57,6 +53,8 @@ class Config:
                 self.tgbot_token = args.tgbot_token
             if args.wxpusher_uid != "":
                 self.wxpusher_uid = args.wxpusher_uid
+        if self.webdriver != "local":
+            self.isremote = True
         if self.username == "" or self.password == "":
             print("用户名或密码为空")
             exit()
