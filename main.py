@@ -21,6 +21,7 @@ parser.add_argument("--password", default="")
 parser.add_argument("--tgbot_userid", default="")
 parser.add_argument("--tgbot_token", default="")
 parser.add_argument("--wxpusher_uid", default="")
+parser.add_argument("--debug", default=False, action="store_true")
 args = parser.parse_args()
 
 
@@ -29,6 +30,7 @@ class Config:
         self.tgbot_enable = False
         self.wxpusher_enable = False
         self.isremote = False
+        self.debug = args.debug
         if args.config_path != "" or os.path.exists("config.json"):  # 读取配置文件
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
             self.configdata = loads(configfile.read())
@@ -181,7 +183,8 @@ class User:
                 driver.find_element("id", "username").send_keys(self.username)
                 driver.find_element("id", "password").send_keys(self.password)
                 driver.find_element("name", "submit").click()
-            except BaseException:
+            except BaseException as e:
+                print(e)
                 error("登录失败，可能是网站寄了，30分钟后重试", 1800)
                 return False
             else:
@@ -194,12 +197,16 @@ class User:
                     exit()
         return True
 
-    def refresh(self):
+    def refresh(self, retry=0):
+        if retry > 3:
+            error("网页加载失败3次，30分钟后重试", 1800)
+            return False
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
-            time.sleep(2)
-        except BaseException:
-            error("网页加载失败，30分钟后重试", 1800)
+            time.sleep(5)
+        except BaseException as e:
+            print(e)
+            self.refresh(retry + 1)
             return False
         else:
             return True
@@ -215,7 +222,8 @@ class User:
             self.refresh()
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
-            except BaseException:
+            except BaseException as e:
+                print(e)
                 error("签到失败，5分钟后重试", 300)
                 return False
             notification("完成了一次签到")
@@ -257,13 +265,21 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def job():
-    setup_driver()
-    user.checkin()
-    schedule.clear()
-    nexttime = user.getcheckintime()
-    schedule.every().day.at(nexttime[0]).do(job)
-    info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
-    driver.quit()
+    if (datetime.datetime.today().isoweekday() == 6 or 7) and not config.debug:
+        # 周末不运行，设置下一天
+        print("今天是周末，不运行")
+        schedule.clear()
+        nexttime = modifytime(randint(5, 7), randint(0, 59), randint(0, 59))
+        schedule.every().day.at(nexttime[0]).do(job)
+        print(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
+    else:
+        setup_driver()
+        user.checkin()
+        schedule.clear()
+        nexttime = user.getcheckintime()
+        schedule.every().day.at(nexttime[0]).do(job)
+        info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
+        driver.quit()
 
 
 def main():
