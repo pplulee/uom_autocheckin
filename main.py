@@ -149,8 +149,9 @@ def setup_driver():
             driver = webdriver.Remote(command_executor=config.webdriver, options=options)
         else:
             driver = webdriver.Chrome(options=options)
-    except Exception as e:
-        error(f"Webdriver失败：{e}")
+    except BaseException as e:
+        print(e)
+        error("Webdriver调用失败")
     else:
         driver.set_page_load_timeout(15)
 
