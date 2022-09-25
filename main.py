@@ -235,10 +235,8 @@ class User:
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
-            notification("已完成当天所有签到\n自动设置下一天运行")
-            schedule.clear()
             self.next_class = "未获取"
-            return modifytime(6, 0, 0)
+            return None
         else:
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")
@@ -249,7 +247,6 @@ class User:
                 # 第一个项目已签到，抓取下一个项目的时间
                 self.next_class = driver.find_elements("class name", "u-font-bold")[3].text
             self.next_time = randomtime(content[-5:])  # 首个任务的时间
-            notification(f"下一节课是{self.next_class}\n签到时间{self.next_time[1]}")
             return self.next_time
 
 
@@ -265,32 +262,38 @@ def modifytime(hh, mm, ss):  # 换算时区
     return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
 
 
-def job():
+def dailycheck():
     if (datetime.datetime.today().isoweekday() == 6 or 7) and not config.debug:
         # 周末不运行，设置下一天
         print("今天是周末，不运行")
-        schedule.clear()
-        nexttime = modifytime(randint(5, 7), randint(0, 59), randint(0, 59))
-        schedule.every().day.at(nexttime[0]).do(job)
-        print(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
     else:
-        setup_driver()
-        user.checkin()
-        schedule.clear()
-        nexttime = user.getcheckintime()
+        job()
+
+
+def job():
+    setup_driver()
+    user.checkin()
+    nexttime = user.getcheckintime()
+    if not (nexttime is None):
         schedule.every().day.at(nexttime[0]).do(job)
-        info(f"已设置下次执行时间（本地时区）：{nexttime[0]}")
-        driver.quit()
+        notification(f"下一节课是{user.next_class}\n签到时间{nexttime[1]}")
+    else:
+        notification("今天已完成所有签到")
+    driver.quit()
+    return schedule.CancelJob
 
 
 def main():
     notification("自动签到开始运行")
+    dailytime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
+    schedule.every().day.at(dailytime[0]).do(dailycheck)
+    notification(f"已设置每日初始时间：{dailytime[0]}")
     global user
     user = User()
-    job()
+    dailycheck()
     while True:
         schedule.run_pending()
-        time.sleep(60)
+        time.sleep(1)
 
 
 if __name__ == '__main__':
