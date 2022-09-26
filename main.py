@@ -263,12 +263,14 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def dailycheck():
-    today = datetime.datetime.today().isoweekday()
-    if ((today == 6) or (today == 7)) and not config.debug:
+    if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
         # 周末不运行，设置下一天
         print("今天是周末，不运行")
     else:
-        job()
+        if not schedule.get_jobs("checkin_task"):
+            job()
+        else:
+            print("检测到任务已存在，不再重复添加")
 
 
 def job():
@@ -276,7 +278,7 @@ def job():
     user.checkin()
     nexttime = user.getcheckintime()
     if not (nexttime is None):
-        schedule.every().day.at(nexttime[0]).do(job)
+        schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")
         notification(f"下一节课是{user.next_class}\n签到时间{nexttime[1]}")
     else:
         notification("今天已完成所有签到")
@@ -286,8 +288,9 @@ def job():
 
 def main():
     notification("自动签到开始运行")
+    schedule.clear()
     dailytime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
-    schedule.every().day.at(dailytime[0]).do(dailycheck)
+    schedule.every().day.at(dailytime[0]).do(dailycheck).tag("dailyjob")
     notification(f"已设置每日初始时间：{dailytime[0]}")
     global user
     user = User()
