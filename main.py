@@ -263,7 +263,8 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def dailycheck():
-    if (datetime.datetime.today().isoweekday() == 6 or 7) and not config.debug:
+    today = datetime.datetime.today().isoweekday()
+    if ((today == 6) or (today == 7)) and not config.debug:
         # 周末不运行，设置下一天
         print("今天是周末，不运行")
     else:
