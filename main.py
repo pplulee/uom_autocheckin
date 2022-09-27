@@ -91,12 +91,13 @@ class TGbot:
         info("Telegram 下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
 
-    def sendmessage(self, text):
-        self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
-
     def job(self, bot, update):
         info("手动执行任务")
+        self.sendmessage("已发送请求")
         job()
+
+    def sendmessage(self, text):
+        self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
 
 
 class WXpusher:
