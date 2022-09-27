@@ -76,6 +76,7 @@ class TGbot:
         self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
         self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
         self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
+        self.updater.dispatcher.add_handler(CommandHandler('job', self.job))
         self.updater.start_polling()
 
     def ping(self, bot, update):
@@ -92,6 +93,10 @@ class TGbot:
 
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
+
+    def job(self, bot, update):
+        info("手动执行任务")
+        job()
 
 
 class WXpusher:
@@ -127,12 +132,12 @@ def info(text):
 
 
 def error(text, time_hold=300):
-    notification(text)
+    notification(text, True)
     logging.critical(text)
     driver.quit()
-    time.sleep(time_hold)
-    main()
-    exit()
+    schedule.clear("checkin_task")
+    next_time = (datetime.datetime.now() + datetime.timedelta(seconds=time_hold)).strftime("%H:%M:%S")
+    schedule.every().day.at(next_time).do(job).tag("checkin_task")
 
 
 def setup_driver():
@@ -172,22 +177,21 @@ class User:
         else:
             return True  # 找到登出按钮
 
-    def login(self):
-        login_count = 0
+    def login(self, retry=0):
+        retry += 1
+        if retry > 3:
+            error("登录失败，15分钟后重试", 900)
+            return False
         while not (self.check_login()):
-            login_count += 1
-            if login_count > 3:
-                notification("登陆失败次数过多，退出程序")
-                exit()
-            info(f"开始第{login_count}次登录")
+            info(f"开始第{retry}次登录")
             try:
                 driver.find_element("id", "username").send_keys(self.username)
                 driver.find_element("id", "password").send_keys(self.password)
                 driver.find_element("name", "submit").click()
             except BaseException as e:
+                print("登陆失败，自动重试")
                 print(e)
-                error("登录失败，可能是网站寄了，30分钟后重试", 1800)
-                return False
+                return self.login(retry)
             else:
                 try:
                     driver.find_element("xpath", "//*[@id='msg']")
@@ -204,7 +208,7 @@ class User:
             return False
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
-            time.sleep(5)
+            time.sleep(3)
         except BaseException as e:
             print(e)
             self.refresh(retry + 1)
@@ -213,12 +217,12 @@ class User:
             return True
 
     def checkin(self):
-        self.login()
+        if not self.refresh():
+            return False
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
-            time.sleep(3)
         except BaseException:  # 没有可签到项目
-            return
+            return True
         else:
             self.refresh()
             try:
@@ -227,11 +231,12 @@ class User:
                 print(e)
                 error("签到失败，5分钟后重试", 300)
                 return False
-            notification("完成了一次签到")
-            return True
+            else:
+                notification("完成了一次签到")
+                return True
 
     def getcheckintime(self):
-        self.refresh()
+        self.login()
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
@@ -274,8 +279,12 @@ def dailycheck():
 
 
 def job():
+    schedule.clear("checkin_task")
     setup_driver()
-    user.checkin()
+    if not user.login():
+        return
+    elif not user.checkin():
+        return
     nexttime = user.getcheckintime()
     if not (nexttime is None):
         schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")
@@ -283,7 +292,6 @@ def job():
     else:
         notification("今天已完成所有签到")
     driver.quit()
-    return schedule.CancelJob
 
 
 def main():
