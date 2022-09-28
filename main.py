@@ -77,6 +77,7 @@ class TGbot:
         self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
         self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
         self.updater.dispatcher.add_handler(CommandHandler('job', self.job))
+        self.updater.dispatcher.add_handler(CommandHandler('checkwebsite', self.check_website))
         self.updater.start_polling()
 
     def ping(self, bot, update):
@@ -95,6 +96,16 @@ class TGbot:
         info("手动执行任务")
         self.sendmessage("已发送请求")
         job()
+
+    def check_website(self, bot, update):
+        info("执行检测学校网站")
+        setup_driver()
+        result = user.refresh()
+        if result:
+            self.sendmessage("网站正常")
+        else:
+            self.sendmessage("网站异常")
+        driver.quit()
 
     def sendmessage(self, text):
         self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
@@ -144,7 +155,8 @@ def error(text, time_hold=300):
 def setup_driver():
     global driver
     options = webdriver.ChromeOptions()
-    options.add_argument("no-sandbox")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument('ignore-certificate-errors')
@@ -170,7 +182,6 @@ class User:
         self.next_time = "未获取"
 
     def check_login(self):
-        self.refresh()
         try:
             driver.find_element("class name", "c-button--logout")  # 检测登出按钮
         except BaseException:
@@ -181,9 +192,10 @@ class User:
     def login(self, retry=0):
         retry += 1
         if retry > 3:
-            error("登录失败，15分钟后重试", 900)
-            return False
-        while not (self.check_login()):
+            return False, "登陆失败3次"
+        if not self.refresh():
+            return False, "登陆失败，页面加载失败"
+        if not self.check_login():
             info(f"开始第{retry}次登录")
             try:
                 driver.find_element("id", "username").send_keys(self.username)
@@ -201,40 +213,40 @@ class User:
                 else:
                     notification("用户名或密码错误，退出程序")
                     exit()
-        return True
+        return True, "登陆成功"
 
     def refresh(self, retry=0):
+        retry += 1
         if retry > 3:
-            error("网页加载失败3次，30分钟后重试", 1800)
+            print("网页加载失败3次")
             return False
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
             time.sleep(3)
         except BaseException as e:
+            print("页面加载失败，自动重试")
             print(e)
-            self.refresh(retry + 1)
-            return False
+            return self.refresh(retry)
         else:
             return True
 
     def checkin(self):
         if not self.refresh():
-            return False
+            return False, "签到失败，页面加载失败"
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
         except BaseException:  # 没有可签到项目
-            return True
+            return True, "已签到"
         else:
-            self.refresh()
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException as e:
+                print("签到失败")
                 print(e)
-                error("签到失败，5分钟后重试", 300)
-                return False
+                return False, "签到失败"
             else:
                 notification("完成了一次签到")
-                return True
+                return True, "签到成功"
 
     def getcheckintime(self):
         self.login()
@@ -282,9 +294,13 @@ def dailycheck():
 def job():
     schedule.clear("checkin_task")
     setup_driver()
-    if not user.login():
+    login_result = user.login()
+    if not login_result[0]:
+        error(f"{login_result[1]}，15分钟后重试", 900)
         return
-    elif not user.checkin():
+    checkin_result = user.checkin()
+    if not checkin_result[0]:
+        error(f"{checkin_result[1]}，15分钟后重试", 900)
         return
     nexttime = user.getcheckintime()
     if not (nexttime is None):
@@ -300,7 +316,7 @@ def main():
     schedule.clear()
     dailytime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
     schedule.every().day.at(dailytime[0]).do(dailycheck).tag("dailyjob")
-    notification(f"已设置每日初始时间：{dailytime[0]}")
+    notification(f"已设置每日初始时间：{dailytime[1]}")
     global user
     user = User()
     dailycheck()
