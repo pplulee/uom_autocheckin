@@ -143,7 +143,7 @@ def notification(content, error=False):
 
 
 def info(text):
-    print(text)
+    print(datetime.datetime.now().strftime("%H:%M:%S"), text)
     logging.info(text)
 
 
@@ -206,7 +206,7 @@ class User:
                 driver.find_element("id", "password").send_keys(self.password)
                 driver.find_element("name", "submit").click()
             except BaseException as e:
-                print("登陆失败，自动重试")
+                info("登陆失败，自动重试")
                 print(e)
                 return self.login(retry)
             else:
@@ -222,13 +222,13 @@ class User:
     def refresh(self, retry=0):
         retry += 1
         if retry > 3:
-            print("网页加载失败3次")
+            info("网页加载失败3次")
             return False
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
             time.sleep(3)
         except BaseException as e:
-            print("页面加载失败，自动重试")
+            info("页面加载失败，自动重试")
             print(e)
             return self.refresh(retry)
         else:
@@ -245,7 +245,7 @@ class User:
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException as e:
-                print("签到失败")
+                info("签到失败")
                 print(e)
                 return False, "签到失败"
             else:
@@ -287,7 +287,7 @@ def modifytime(hh, mm, ss):  # 换算时区
 def dailycheck():
     if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
         # 周末不运行，设置下一天
-        print("今天是周末，不运行")
+        info("今天是周末，不运行")
     else:
         schedule.clear("checkin_task")
         nexttime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
