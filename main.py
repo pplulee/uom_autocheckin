@@ -54,6 +54,7 @@ class Config:
                 self.tgbot_userid = args.tgbot_userid
                 self.tgbot_token = args.tgbot_token
             if args.wxpusher_uid != "":
+                self.wxpusher_enable = True
                 self.wxpusher_uid = args.wxpusher_uid
         if self.webdriver != "local":
             self.isremote = True
@@ -99,16 +100,19 @@ class TGbot:
 
     def check_website(self, bot, update):
         info("执行检测学校网站")
+        messageID = self.sendmessage("正在检测网站……")
         setup_driver()
         result = user.refresh()
         if result:
-            self.sendmessage("网站正常")
+            self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
+                                                          text="网站正常")
         else:
-            self.sendmessage("网站异常")
+            self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
+                                                          text="网站异常")
         driver.quit()
 
     def sendmessage(self, text):
-        self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)
+        return self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)["message_id"]
 
 
 class WXpusher:
@@ -269,7 +273,7 @@ class User:
 
 
 def randomtime(time):  # 随机时间
-    return modifytime(int(time[:2]), int(time[3:]) + randint(0, 8), randint(0, 59))
+    return modifytime(int(time[:2]), int(time[3:]) + randint(0, 7), randint(0, 59))
 
 
 def modifytime(hh, mm, ss):  # 换算时区
@@ -285,10 +289,9 @@ def dailycheck():
         # 周末不运行，设置下一天
         print("今天是周末，不运行")
     else:
-        if not schedule.get_jobs("checkin_task"):
-            job()
-        else:
-            print("检测到任务已存在，不再重复添加")
+        schedule.clear("checkin_task")
+        nexttime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
+        schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")  # 随机时间执行首次任务
 
 
 def job():
@@ -307,19 +310,17 @@ def job():
         schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")
         notification(f"下一节课是{user.next_class}\n签到时间{nexttime[1]}")
     else:
-        notification("今天已完成所有签到")
+        notification("今天已完成所有签到，将在次日自动运行")
     driver.quit()
 
 
 def main():
     notification("自动签到开始运行")
     schedule.clear()
-    dailytime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
-    schedule.every().day.at(dailytime[0]).do(dailycheck).tag("dailyjob")
-    notification(f"已设置每日初始时间：{dailytime[1]}")
+    schedule.every().day.at(modifytime(1, 0, 0)[0]).do(dailycheck).tag("dailyjob")
     global user
     user = User()
-    dailycheck()
+    job()
     while True:
         schedule.run_pending()
         time.sleep(1)
