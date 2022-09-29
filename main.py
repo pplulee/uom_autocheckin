@@ -216,6 +216,7 @@ class User:
                     pass
                 else:
                     notification("用户名或密码错误，退出程序")
+                    driver.quit()
                     exit()
         return True, "登陆成功"
 
