@@ -285,6 +285,7 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def dailycheck():
+    info("开始执行每日任务")
     if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
         # 周末不运行，设置下一天
         info("今天是周末，不运行")
@@ -295,6 +296,7 @@ def dailycheck():
 
 
 def job():
+    info("开始执行签到任务")
     schedule.clear("checkin_task")
     setup_driver()
     login_result = user.login()
