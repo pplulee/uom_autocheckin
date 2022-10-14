@@ -322,7 +322,7 @@ def job():
 
 
 def main():
-    notification("自动签到开始运行\n欢迎关注官方Telegram频道：t.me/uom_autocheckin 以获取最新通知")
+    notification("自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知")
     schedule.clear()
     schedule.every().day.at(modifytime(1, 0, 0)[0]).do(dailycheck).tag("dailyjob")
     global user
