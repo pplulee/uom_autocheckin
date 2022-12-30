@@ -29,8 +29,9 @@ Use `--config_path xxx.json` to change the config file path.
 
 ## Docker Method(x86_64 and arm64V8 are tested)
 ### 1.Use Docker Hub(Recommended)
-* Use `docker pull sahuidhsu/uom_autocheckin` to download the latest version of the image(ARM64 users please use `sahuidhsu/uom_autocheckin:arm64` instead)
-* Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`(ARM64 users please add `:arm64` at the end), here the`xxx=xxx`is
+* Use `docker pull sahuidhsu/uom_autocheckin` to download the latest version of the image
+* Run `docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`
+* Here the`xxx=xxx`is
 in the format of config.json. e.g. `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 

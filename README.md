@@ -29,8 +29,9 @@ clone后，需先安装pip依赖
 
 ## Docker运行方法(已测试支持x86_64与arm64v8)
 ### 1.使用Docker Hub中版本（推荐）
-* 使用`docker pull sahuidhsu/uom_autocheckin`来拉取镜像（ARM64架构请拉取`sahuidhsu/uom_autocheckin:arm64`）
-* 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`命令启动项目（ARM64架构最后面加上`:arm64`） 此处的`xxx=xxx`按
+* 使用`docker pull sahuidhsu/uom_autocheckin`来拉取镜像
+* 使用`docker run -d --name=uom_checkin -e xxx=xxx -e xxx=xxx -e xxx=xxx... sahuidhsu/uom_autocheckin`命令启动项目
+* 此处的`xxx=xxx`按
 config.json中的配置填写即可，如 `-e username=u11451hh -e password=123456 -e webdriver=http://example.com:1145/webdriver -e tgbot_token=xxx...`
 
 ### 2.本地制作Docker镜像（其它架构自行编译，不保证一定成功）
