@@ -24,13 +24,24 @@ parser.add_argument("--wxpusher_uid", default="")
 parser.add_argument("--debug", default=False, action="store_true")
 args = parser.parse_args()
 
+logger = logging.getLogger()
+logger.setLevel('INFO')
+BASIC_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+formatter = logging.Formatter(BASIC_FORMAT, DATE_FORMAT)
+chlr = logging.StreamHandler()  # 输出到控制台的handler
+chlr.setFormatter(formatter)
+fhlr = logging.FileHandler('log', mode='w')  # 输出到文件的handler
+fhlr.setFormatter(formatter)
+logger.addHandler(chlr)
+logger.addHandler(fhlr)
+
 
 class Config:
     def __init__(self):
         self.tgbot_enable = False
         self.wxpusher_enable = False
         self.isremote = False
-        self.debug = args.debug
         if args.config_path != "" or os.path.exists("config.json"):  # 读取配置文件
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
             self.configdata = loads(configfile.read())
@@ -38,6 +49,7 @@ class Config:
             self.username = self.configdata["username"]
             self.password = self.configdata["password"]
             self.webdriver = self.configdata["webdriver"]
+            self.debug = self.configdata["debug"] == 1
             if self.configdata["tgbot_enable"] == 1:
                 self.tgbot_enable = True
                 self.tgbot_userid = self.configdata["tgbot_userid"]
@@ -49,6 +61,7 @@ class Config:
             self.webdriver = args.webdriver
             self.username = args.username
             self.password = args.password
+            self.debug = args.debug
             if args.tgbot_userid != "" and args.tgbot_token != "":
                 self.tgbot_enable = True
                 self.tgbot_userid = args.tgbot_userid
@@ -56,13 +69,12 @@ class Config:
             if args.wxpusher_uid != "":
                 self.wxpusher_enable = True
                 self.wxpusher_uid = args.wxpusher_uid
-        if self.webdriver != "local":
-            self.isremote = True
+        self.isremote = self.webdriver != "local"
         if self.username == "" or self.password == "":
-            print("用户名或密码为空")
+            logger.error("用户名或密码为空")
             exit()
         if self.webdriver == "":
-            print("webdriver为空")
+            logger.error("webdriver为空")
             exit()
         self.tzlondon = pytz.timezone("Europe/London")  # Time zone
         self.tzlocal = get_localzone()
@@ -79,36 +91,36 @@ class TGbot:
         self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
         self.updater.dispatcher.add_handler(CommandHandler('job', self.job))
         self.updater.dispatcher.add_handler(CommandHandler('checkwebsite', self.check_website))
+        self.updater.dispatcher.add_handler(CommandHandler('getlog', self.sendlogfile))
         self.updater.start_polling()
 
     def ping(self, bot, update):
-        info("Telegram 检测存活")
+        logger.info("Telegram 检测存活")
         self.sendmessage("还活着捏")
 
     def nextclass(self, bot, update):
-        info("Telegram 下节课信息")
+        logger.info("Telegram 下节课信息")
         self.sendmessage(f"下节课是：{user.next_class}")
 
     def nexttime(self, bot, update):
-        info("Telegram 下节课时间")
+        logger.info("Telegram 下节课时间")
         self.sendmessage(f"下节课的时间：{user.next_time}")
 
     def job(self, bot, update):
-        info("手动执行任务")
+        logger.info("手动执行任务")
         self.sendmessage("已发送请求")
         job()
 
+    def sendlogfile(self, bot, update):
+        logger.info("Telegram 发送日志")
+        self.updater.bot.send_document(chat_id=config.tgbot_userid, document=open('log', 'rb'))
+
     def check_website(self, bot, update):
-        info("执行检测学校网站")
+        logger.info("执行检测学校网站")
         messageID = self.sendmessage("正在检测网站……")
         setup_driver()
-        result = user.refresh()
-        if result:
-            self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
-                                                          text="网站正常")
-        else:
-            self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
-                                                          text="网站异常")
+        self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
+                                                      text="网站正常" if user.refresh() else "网站异常")
         driver.quit()
 
     def sendmessage(self, text):
@@ -133,34 +145,19 @@ if config.wxpusher_enable:
 
 
 def notification(content, error=False):
-    info(content)
+    logger.info(content) if not error else logger.error(content)
     if error:
-        content = f"[ERROR] {content}"
+        content = f"错误：{content}"
     if config.tgbot_enable:
         tgbot.sendmessage(content)
     if config.wxpusher_enable:
         wxpusher.sendmessage(content)
 
 
-def info(text):
-    print(datetime.datetime.now().strftime("%H:%M:%S"), text)
-    logging.info(text)
-
-
-def error(text, time_hold=300):
-    notification(text, True)
-    logging.critical(text)
-    driver.quit()
-    schedule.clear("checkin_task")
-    next_time = (datetime.datetime.now() + datetime.timedelta(seconds=time_hold)).strftime("%H:%M:%S")
-    schedule.every().day.at(next_time).do(job).tag("checkin_task")
-
-
 def setup_driver():
     global driver
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
-    options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--ignore-certificate-errors")
@@ -168,18 +165,18 @@ def setup_driver():
     options.add_argument("--disable-extensions")
     options.add_argument("start-maximized")
     options.add_argument("window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                         "Chrome/101.0.4951.54 Safari/537.36")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/109.0.5414.83 Mobile/15E148 Safari/604.1")
     try:
-        if config.isremote:
-            driver = webdriver.Remote(command_executor=config.webdriver, options=options)
-        else:
-            driver = webdriver.Chrome(options=options)
+        driver = webdriver.Remote(command_executor=config.webdriver,
+                                  options=options) if config.isremote else webdriver.Chrome(options=options)
     except BaseException as e:
-        print(e)
-        error("Webdriver调用失败")
+        logger.error("Webdriver调用失败")
+        logger.error(e)
+        return False
     else:
-        driver.set_page_load_timeout(15)
+        driver.set_page_load_timeout(30)
+        return True
 
 
 class User:
@@ -189,76 +186,77 @@ class User:
         self.next_class = "未获取"
         self.next_time = "未获取"
 
-    def check_login(self):
-        try:
-            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
-        except BaseException:
-            return False  # 未找到登出按钮
-        else:
-            return True  # 找到登出按钮
-
-    def login(self, retry=0):
-        retry += 1
-        if retry > 3:
-            return False, "登陆失败3次"
-        if not self.refresh():
-            return False, "登陆失败，页面加载失败"
-        if not self.check_login():
-            info(f"开始第{retry}次登录")
-            try:
-                driver.find_element("id", "username").send_keys(self.username)
-                driver.find_element("id", "password").send_keys(self.password)
-                driver.find_element("name", "submit").click()
-            except BaseException as e:
-                info("登陆失败，自动重试")
-                print(e)
-                return self.login(retry)
-            else:
-                try:
-                    driver.find_element("xpath", "//*[@id='msg']")
-                except BaseException:
-                    pass
-                else:
-                    notification("用户名或密码错误，退出程序")
-                    driver.quit()
-                    exit()
-        return True, "登陆成功"
-
     def refresh(self, retry=0):
-        retry += 1
         if retry > 3:
-            info("网页加载失败3次")
+            notification("网页加载失败3次", True)
             return False
         try:
             driver.get('https://my.manchester.ac.uk/MyCheckIn')
-            time.sleep(3)
+            time.sleep(5)
         except BaseException as e:
-            info("页面加载失败，自动重试")
-            print(e)
-            return self.refresh(retry)
+            logger.error("页面加载失败，自动重试")
+            logger.error(e)
+            return self.refresh(retry + 1)
         else:
             return True
 
-    def checkin(self):
+    def login(self, retry=0):
+        if retry > 3:
+            logger.error("登录失败3次")
+            return False, "登陆失败3次"
         if not self.refresh():
-            return False, "签到失败，页面加载失败"
+            logger.error("登录失败，网页加载失败")
+            return False, "登陆失败，网页加载失败"
+
+        try:
+            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
+        except BaseException:
+            pass  # 未找到登出按钮
+        else:
+            return True, "已登录"  # 找到登出按钮
+
+        logger.info(f"开始第{retry}次登录")
+        try:
+            driver.find_element("id", "username").send_keys(self.username)
+            driver.find_element("id", "password").send_keys(self.password)
+            driver.find_element("name", "submit").click()
+        except BaseException as e:
+            logger.error("登陆失败，自动重试")
+            logger.error(e)
+            return self.login(retry)
+        else:
+            try:
+                driver.find_element("xpath", "//*[@id='msg']")
+            except BaseException:
+                pass
+            else:
+                notification("用户名或密码错误，退出程序", True)
+                driver.quit()
+                exit()
+        logger.info("登录成功")
+        return True, "登陆成功"
+
+    def checkin(self):
         try:
             driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
         except BaseException:  # 没有可签到项目
-            return True, "已签到"
+            logger.info("没有可签到项目")
+            return True, "没有可签到项目"
         else:
             try:
                 driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
             except BaseException as e:
-                info("签到失败")
-                print(e)
+                logger.error("签到执行失败")
+                logger.error(e)
                 return False, "签到失败"
             else:
                 notification("完成了一次签到")
                 return True, "签到成功"
 
     def getcheckintime(self):
-        self.login()
+        login_result = self.login()
+        if not login_result[0]:
+            return False, login_result[1]
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
@@ -290,10 +288,10 @@ def modifytime(hh, mm, ss):  # 换算时区
 
 
 def dailycheck():
-    info("开始执行每日任务")
+    logger.info("开始执行每日任务")
     if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
         # 周末不运行，设置下一天
-        info("今天是周末，不运行")
+        logger.info("今天是周末，不运行")
     else:
         schedule.clear("checkin_task")
         nexttime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
@@ -301,24 +299,36 @@ def dailycheck():
 
 
 def job():
-    info("开始执行签到任务")
+    logger.info("开始执行签到任务")
     schedule.clear("checkin_task")
-    setup_driver()
-    login_result = user.login()
-    if not login_result[0]:
-        error(f"{login_result[1]}，15分钟后重试", 900)
-        return
-    checkin_result = user.checkin()
-    if not checkin_result[0]:
-        error(f"{checkin_result[1]}，15分钟后重试", 900)
-        return
-    nexttime = user.getcheckintime()
-    if not (nexttime is None):
-        schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")
-        notification(f"下一节课是{user.next_class}\n签到时间{nexttime[1]}")
+    webdriver_result = setup_driver()
+    if not webdriver_result:
+        notification("webdriver调用失败，15分钟后重试", True)
+        next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
     else:
-        notification("今天已完成所有签到，将在次日自动运行")
-    driver.quit()
+        login_result = user.login()
+        if not login_result[0]:
+            notification(f"{login_result[1]}，15分钟后重试", True)
+            next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
+        else:
+            checkin_result = user.checkin()
+            if not checkin_result[0]:
+                notification(f"{checkin_result[1]}，15分钟后重试", True)
+                next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
+            else:
+                checkin_time = user.getcheckintime()
+                if checkin_time is None:
+                    notification("今天已完成所有签到，将在次日自动运行")
+                    next_time = None
+                else:
+                    notification(f"下一节课是{user.next_class}\n签到时间{checkin_time[1]}")
+                    next_time = checkin_time[0]
+    if next_time is not None:
+        schedule.every().day.at(next_time).do(job).tag("checkin_task")
+    try:
+        driver.quit()
+    except BaseException:
+        pass
 
 
 def main():
