@@ -254,9 +254,6 @@ class User:
                 return True, "签到成功"
 
     def getcheckintime(self):
-        login_result = self.login()
-        if not login_result[0]:
-            return False, login_result[1]
         try:
             content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
         except BaseException:
@@ -302,6 +299,7 @@ def job():
     logger.info("开始执行签到任务")
     schedule.clear("checkin_task")
     webdriver_result = setup_driver()
+    next_time = None
     if not webdriver_result:
         notification("webdriver调用失败，15分钟后重试", True)
         next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
@@ -319,9 +317,8 @@ def job():
                 checkin_time = user.getcheckintime()
                 if checkin_time is None:
                     notification("今天已完成所有签到，将在次日自动运行")
-                    next_time = None
                 else:
-                    notification(f"下一节课是{user.next_class}\n签到时间{checkin_time[1]}")
+                    notification(f"下一节课是：{user.next_class}\n签到时间：{checkin_time[1]}")
                     next_time = checkin_time[0]
     if next_time is not None:
         schedule.every().day.at(next_time).do(job).tag("checkin_task")
