@@ -10,6 +10,9 @@ import pytz
 import schedule
 from requests import get
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
 
@@ -207,44 +210,47 @@ class User:
         if not self.refresh():
             logger.error("登录失败，网页加载失败")
             return False, "登陆失败，网页加载失败"
-
         try:
-            driver.find_element("class name", "c-button--logout")  # 检测登出按钮
+            WebDriverWait(driver, 8).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "c-button--logout")))  # 检测登出按钮
         except BaseException:
-            pass  # 未找到登出按钮
+            pass  # 未登录
         else:
             return True, "已登录"  # 找到登出按钮
-
         logger.info(f"开始第{retry}次登录")
         try:
-            driver.find_element("id", "username").send_keys(self.username)
-            driver.find_element("id", "password").send_keys(self.password)
-            driver.find_element("name", "submit").click()
+            driver.find_element(By.ID, "username").send_keys(self.username)
+            driver.find_element(By.ID, "password").send_keys(self.password)
+            time.sleep(1)
+            driver.find_element(By.NAME, "submit").click()
         except BaseException as e:
             logger.error("登陆失败，自动重试")
             logger.error(e)
-            return self.login(retry)
+            return self.login(retry + 1)
         else:
             try:
-                driver.find_element("xpath", "//*[@id='msg']")
+                driver.find_element(By.XPATH, "//*[@id='msg']")
             except BaseException:
                 pass
             else:
                 notification("用户名或密码错误，退出程序", True)
                 driver.quit()
                 exit()
+        WebDriverWait(driver, 5).until_not(EC.presence_of_element_located((By.NAME, "submit")))  # 等待登录按钮消失
         logger.info("登录成功")
         return True, "登陆成功"
 
     def checkin(self):
         try:
-            driver.find_element("name", "StudentSelfCheckinSubmit").click()  # 尝试点击签到
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.NAME, "StudentSelfCheckinSubmit"))).click()  # 等待签到成功
         except BaseException:  # 没有可签到项目
             logger.info("没有可签到项目")
             return True, "没有可签到项目"
         else:
             try:
-                driver.find_element("xpath", "//*[text()='Check-in successful']")  # 成功点击，检测是否已经成功
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[text()='Check-in successful']")))  # 成功点击，检测是否已经成功
             except BaseException as e:
                 logger.error("签到执行失败")
                 logger.error(e)
@@ -255,19 +261,20 @@ class User:
 
     def getcheckintime(self):
         try:
-            content = driver.find_element("xpath", "//*[contains(text(),'Check-in open at ')]").text
+            content = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, "//*[contains(text(),'Check-in open at ')]"))).text
         except BaseException:
             self.next_class = "未获取"
             return None
         else:
             try:
-                driver.find_element("xpath", "//*[text()='Check-in successful']")
+                driver.find_element(By.XPATH, "//*[text()='Check-in successful']")
             except BaseException:
                 # 第一个项目未签到
-                self.next_class = driver.find_elements("class name", "u-font-bold")[2].text
+                self.next_class = driver.find_elements(By.CLASS_NAME, "u-font-bold")[2].text
             else:
                 # 第一个项目已签到，抓取下一个项目的时间
-                self.next_class = driver.find_elements("class name", "u-font-bold")[3].text
+                self.next_class = driver.find_elements(By.CLASS_NAME, "u-font-bold")[3].text
             self.next_time = randomtime(content[-5:])  # 首个任务的时间
             return self.next_time
 
