@@ -299,6 +299,7 @@ def dailycheck():
     else:
         schedule.clear("checkin_task")
         nexttime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
+        logger.info(f"下次签到时间：{nexttime[1]}")
         schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")  # 随机时间执行首次任务
 
 
