@@ -168,6 +168,7 @@ def setup_driver():
     options.add_argument("--disable-extensions")
     options.add_argument("start-maximized")
     options.add_argument("window-size=1920,1080")
+    options.add_argument("--headless")
     options.add_argument(
         "user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/109.0.5414.83 Mobile/15E148 Safari/604.1")
     try:
