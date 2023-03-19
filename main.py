@@ -21,7 +21,7 @@ parser.add_argument("--config_path", default="")
 parser.add_argument("--webdriver", default="local")
 parser.add_argument("--username", default="")
 parser.add_argument("--password", default="")
-parser.add_argument("--tgbot_userid", default="")
+parser.add_argument("--tgbot_chat_id", default="")
 parser.add_argument("--tgbot_token", default="")
 parser.add_argument("--wxpusher_uid", default="")
 parser.add_argument("--debug", default=False, action="store_true")
@@ -34,7 +34,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 formatter = logging.Formatter(BASIC_FORMAT, DATE_FORMAT)
 chlr = logging.StreamHandler()  # 输出到控制台的handler
 chlr.setFormatter(formatter)
-fhlr = logging.FileHandler('log', mode='w')  # 输出到文件的handler
+fhlr = logging.FileHandler('log.txt', mode='w')  # 输出到文件的handler
 fhlr.setFormatter(formatter)
 logger.addHandler(chlr)
 logger.addHandler(fhlr)
@@ -55,7 +55,7 @@ class Config:
             self.debug = self.configdata["debug"] == 1
             if self.configdata["tgbot_enable"] == 1:
                 self.tgbot_enable = True
-                self.tgbot_userid = self.configdata["tgbot_userid"]
+                self.tgbot_chat_id = self.configdata["tgbot_chat_id"]
                 self.tgbot_token = self.configdata["tgbot_token"]
             if self.configdata["wxpusher_enable"] == 1:
                 self.wxpusher_enable = True
@@ -65,9 +65,9 @@ class Config:
             self.username = args.username
             self.password = args.password
             self.debug = args.debug
-            if args.tgbot_userid != "" and args.tgbot_token != "":
+            if args.tgbot_chat_id != "" and args.tgbot_token != "":
                 self.tgbot_enable = True
-                self.tgbot_userid = args.tgbot_userid
+                self.tgbot_chat_id = args.tgbot_chat_id
                 self.tgbot_token = args.tgbot_token
             if args.wxpusher_uid != "":
                 self.wxpusher_enable = True
@@ -116,18 +116,18 @@ class TGbot:
 
     def sendlogfile(self, bot, update):
         logger.info("Telegram 发送日志")
-        self.updater.bot.send_document(chat_id=config.tgbot_userid, document=open('log', 'rb'))
+        self.updater.bot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
 
     def check_website(self, bot, update):
         logger.info("执行检测学校网站")
         messageID = self.sendmessage("正在检测网站……")
         setup_driver()
-        self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_userid, message_id=messageID,
+        self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_chat_id, message_id=messageID,
                                                       text="网站正常" if user.refresh() else "网站异常")
         driver.quit()
 
     def sendmessage(self, text):
-        return self.updater.bot.send_message(chat_id=config.tgbot_userid, text=text)["message_id"]
+        return self.updater.bot.send_message(chat_id=config.tgbot_chat_id, text=text)["message_id"]
 
 
 class WXpusher:
