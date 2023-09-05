@@ -1,6 +1,7 @@
 FROM python:3.9-slim
 
 WORKDIR /app
+ADD WXpusher.py /app
 ADD main.py /app
 ADD requirements.txt /app
 

@@ -3,7 +3,7 @@
   "password": "",
   "webdriver": "local",
   "tgbot_enable": 0,
-  "tgbot_userid": "",
+  "tgbot_chat_id": "",
   "tgbot_token": "",
   "wxpusher_enable": 0,
   "wxpusher_uid": "",

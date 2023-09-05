@@ -2,19 +2,22 @@ import argparse
 import datetime
 import logging
 import os.path
+import random
+import threading
 import time
 from json import loads
 from random import randint
 
 import pytz
 import schedule
-from requests import get
+import telebot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from telegram.ext import Updater, CommandHandler
 from tzlocal import get_localzone
+
+from WXpusher import WXpusher
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
@@ -85,66 +88,75 @@ class Config:
 
 config = Config()
 
-
-class TGbot:
-    def __init__(self):
-        self.updater = Updater(config.tgbot_token)
-        self.updater.dispatcher.add_handler(CommandHandler('ping', self.ping))
-        self.updater.dispatcher.add_handler(CommandHandler('nextclass', self.nextclass))
-        self.updater.dispatcher.add_handler(CommandHandler('nexttime', self.nexttime))
-        self.updater.dispatcher.add_handler(CommandHandler('job', self.job))
-        self.updater.dispatcher.add_handler(CommandHandler('checkwebsite', self.check_website))
-        self.updater.dispatcher.add_handler(CommandHandler('getlog', self.sendlogfile))
-        self.updater.start_polling()
-
-    def ping(self, bot, update):
-        logger.info("Telegram 检测存活")
-        self.sendmessage("还活着捏")
-
-    def nextclass(self, bot, update):
-        logger.info("Telegram 下节课信息")
-        self.sendmessage(f"下节课是：{user.next_class}")
-
-    def nexttime(self, bot, update):
-        logger.info("Telegram 下节课时间")
-        self.sendmessage(f"下节课的时间：{user.next_time}")
-
-    def job(self, bot, update):
-        logger.info("手动执行任务")
-        self.sendmessage("已发送请求")
-        job()
-
-    def sendlogfile(self, bot, update):
-        logger.info("Telegram 发送日志")
-        self.updater.bot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
-
-    def check_website(self, bot, update):
-        logger.info("执行检测学校网站")
-        messageID = self.sendmessage("正在检测网站……")
-        setup_driver()
-        self.updater.dispatcher.bot.edit_message_text(chat_id=config.tgbot_chat_id, message_id=messageID,
-                                                      text="网站正常" if user.refresh() else "网站异常")
-        driver.quit()
-
-    def sendmessage(self, text):
-        return self.updater.bot.send_message(chat_id=config.tgbot_chat_id, text=text)["message_id"]
-
-
-class WXpusher:
-    def __init__(self):
-        self.API_TOKEN = "AT_MrNwhC7N9jbt2hmdDXxOaGPkI7OmN8WV"
-        self.baseurl = f"http://wxpusher.zjiecode.com/api/send/message/?appToken={self.API_TOKEN}\
-        &uid={config.wxpusher_uid}&content="
-
-    def sendmessage(self, content):
-        get(f"{self.baseurl}{content}")
-
-
 if config.tgbot_enable:
-    tgbot = TGbot()
+    tgbot = telebot.TeleBot(config.tgbot_token)
+
+
+    def check_chat_id(message):
+        if str(message.chat.id) == config.tgbot_chat_id:
+            return True
+        else:
+            tgbot.reply_to(message, "你没有权限使用此命令")
+            return False
+
+
+    def bot_send_message(content):
+        tgbot.send_message(chat_id=config.tgbot_chat_id, text=content)
+
+
+    @tgbot.message_handler(commands=['start', 'ping'])
+    def bot_ping(message):
+        if check_chat_id(message):
+            tgbot.reply_to(message, '还活着捏')
+
+
+    @tgbot.message_handler(commands=['nextclass'])
+    def bot_nextclass(message):
+        if check_chat_id(message):
+            tgbot.reply_to(message, f"下节课是：{user.next_class}")
+
+
+    @tgbot.message_handler(commands=['nexttime'])
+    def bot_nexttime(message):
+        if check_chat_id(message):
+            tgbot.reply_to(message, f"下节课的时间：{user.next_time}")
+
+
+    @tgbot.message_handler(commands=['job'])
+    def bot_job(message):
+        if check_chat_id(message):
+            logger.info("手动执行任务")
+            tgbot.reply_to(message, "已发送请求")
+            job()
+
+
+    @tgbot.message_handler(commands=['getlog'])
+    def bot_getlog(message):
+        if check_chat_id(message):
+            logger.info("Telegram 发送日志")
+            tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
+
+
+    @tgbot.message_handler(commands=['checkwebsite'])
+    def check_website(message):
+        if check_chat_id(message):
+            logger.info("执行检测学校网站")
+            reply = tgbot.reply_to(message, "正在检测网站……")
+            setup_driver()
+            tgbot.edit_message_text(chat_id=config.tgbot_chat_id, message_id=reply.message_id,
+                                    text="网站正常" if user.refresh() else "网站异常")
+            driver.quit()
+
+
+    def bot_start_polling():
+        tgbot.infinity_polling(skip_pending=True, timeout=10)
+
+
+    thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
+    thread_bot.start()
 
 if config.wxpusher_enable:
-    wxpusher = WXpusher()
+    wxpusher = WXpusher(config.wxpusher_uid)
 
 
 def notification(content, error=False):
@@ -152,9 +164,9 @@ def notification(content, error=False):
     if error:
         content = f"错误：{content}"
     if config.tgbot_enable:
-        tgbot.sendmessage(content)
+        bot_send_message(content)
     if config.wxpusher_enable:
-        wxpusher.sendmessage(content)
+        wxpusher.send_message(content)
 
 
 def setup_driver():
@@ -168,9 +180,19 @@ def setup_driver():
     options.add_argument("--disable-extensions")
     options.add_argument("start-maximized")
     options.add_argument("window-size=1920,1080")
-    options.add_argument("--headless")
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/109.0.5414.83 Mobile/15E148 Safari/604.1")
+    if not config.debug:
+        options.add_argument("--headless")
+    user_agents = [
+        # Windows Chrome
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        # macOS Chrome
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        # Linux Chrome
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+    ]
+    options.add_argument(f"user-agent={random.choice(user_agents)}")
     try:
         driver = webdriver.Remote(command_executor=config.webdriver,
                                   options=options) if config.isremote else webdriver.Chrome(options=options)
