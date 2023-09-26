@@ -11,15 +11,19 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from School import School
+from ActivityType import ActivityType
 
 FORM_URL = "https://forms.office.com/pages/responsepage.aspx?id=B8tSwU5hu0qBivA1z6kadxxo9NU4_-JCmplnw7Nn_rZUNVNIRldITkRLT1lTREVOWkMxWFo5RDcyRyQlQCN0PWcu"
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
 parser.add_argument("--webdriver", default="local")
-parser.add_argument("--studentID", default="local")
+parser.add_argument("--studentID", default="")
+parser.add_argument("--email", default="")
 parser.add_argument("--username", default="")
 parser.add_argument("--password", default="")
+parser.add_argument("--school", default="")
 parser.add_argument("--tgbot_chat_id", default="")
 parser.add_argument("--tgbot_token", default="")
 parser.add_argument("--debug", default=False, action="store_true")
@@ -40,8 +44,6 @@ logger.addHandler(fhlr)
 
 class Config:
     def __init__(self):
-        self.tgbot_enable = False
-        self.wxpusher_enable = False
         self.isremote = False
         if args.config_path != "" or os.path.exists("config.json"):  # 读取配置文件
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
@@ -51,6 +53,7 @@ class Config:
             self.email = self.configdata["email"]
             self.username = self.configdata["username"]
             self.password = self.configdata["password"]
+            self.school = self.configdata["school"]
             self.webdriver = self.configdata["webdriver"]
             self.debug = self.configdata["debug"] == 1
             self.tgbot_chat_id = self.configdata["tgbot_chat_id"]
@@ -61,6 +64,7 @@ class Config:
             self.email = args.email
             self.username = args.username
             self.password = args.password
+            self.school = args.school
             self.debug = args.debug
             self.tgbot_chat_id = args.tgbot_chat_id
             self.tgbot_token = args.tgbot_token
@@ -76,6 +80,9 @@ class Config:
             exit()
         if self.studentID == "":
             logger.error("学生ID为空")
+            exit()
+        if self.school == "":
+            logger.error("学院为空")
             exit()
         if self.webdriver == "":
             logger.error("webdriver为空")
@@ -104,6 +111,18 @@ def bot_ping(message):
         tgbot.reply_to(message, '还活着捏')
 
 
+@tgbot.message_handler(commands=['schools'])
+def bot_ping(message):
+    if check_chat_id(message):
+        tgbot.reply_to(message, '可用学院：\n' + '\n'.join(School.xpath.keys()))
+
+
+@tgbot.message_handler(commands=['activities'])
+def bot_ping(message):
+    if check_chat_id(message):
+        tgbot.reply_to(message, '可用活动类型：\n' + '\n'.join(ActivityType.xpath.keys()))
+
+
 @tgbot.message_handler(commands=['fill'])
 def bot_job(message):
     if check_chat_id(message):
@@ -130,6 +149,7 @@ def bot_getlog(message):
 def bot_send_photo():
     record_screen()
     tgbot.send_photo(chat_id=config.tgbot_chat_id, photo=open('save.png', 'rb'))
+
 
 def bot_start_polling():
     tgbot.infinity_polling(skip_pending=True, timeout=10)
@@ -197,6 +217,7 @@ class User:
         self.email = config.email
         self.username = config.username
         self.password = config.password
+        self.school = config.school
 
     def refresh(self, retry=0):
         if retry > 3:
@@ -252,23 +273,26 @@ class User:
 
     def fillform(self, unit, type):
         try:
+            # Student ID
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
                 self.studentID)
+
+            # School
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/div/div").click()
-            driver.find_element(By.XPATH, "/html/body/div[2]/div/div[4]").click()
+            driver.find_element(By.XPATH, School.xpath[self.school]).click()
+            if self.school == "Other":
+                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/span/input").send_keys(
+                    self.school)
+
+            # Unit
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[3]/div[2]/div/span/input").send_keys(unit)
+
+            # Activity Type
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/div/div").click()
-            if type == "Lab":
-                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]").click()
-            elif type == "Lecture":
-                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[2]").click()
-            elif type == "Seminar":
-                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[5]").click()
-            elif type == "Workshop":
-                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[7]").click()
-            else:
-                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[8]").click()
+            driver.find_element(By.XPATH, ActivityType.xpath[type]).click()
+            if type == "Other":
                 driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/span/input").send_keys(type)
+
             driver.find_element(By.XPATH,
                                 "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
             time.sleep(1)
