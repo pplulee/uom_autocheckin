@@ -11,10 +11,12 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from School import School
+
 from ActivityType import ActivityType
+from School import School
 
 FORM_URL = "https://forms.office.com/pages/responsepage.aspx?id=B8tSwU5hu0qBivA1z6kadxxo9NU4_-JCmplnw7Nn_rZUNVNIRldITkRLT1lTREVOWkMxWFo5RDcyRyQlQCN0PWcu"
+cancel_flag = False
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
@@ -125,6 +127,7 @@ def bot_ping(message):
 
 @tgbot.message_handler(commands=['fill'])
 def bot_job(message):
+    global cancel_flag
     if check_chat_id(message):
         logger.info("开始执行填表任务")
         text = message.text
@@ -135,8 +138,34 @@ def bot_job(message):
             return
         unit = match.group(1)
         fill_type = match.group(2)
-        tgbot.reply_to(message, "开始执行填表任务")
-        job(unit, fill_type)
+        reply = tgbot.reply_to(message, "开始执行填表任务……")
+        logger.info("开始执行填表任务")
+        webdriver_result = setup_driver()
+        if not webdriver_result:
+            notification("webdriver调用失败", True)
+        else:
+            login_result = user.login()
+            if login_result:
+                if user.fillform(unit=unit, type=fill_type, submit=True):
+                    tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="填表成功")
+                else:
+                    tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="填表失败")
+        try:
+            driver.quit()
+        except BaseException:
+            pass
+        cancel_flag = False
+
+
+@tgbot.message_handler(commands=['testlogin'])
+def bot_getlog(message):
+    if check_chat_id(message):
+        reply = tgbot.reply_to(message, "开始测试登录……")
+        result = user.test_login()
+        if result:
+            tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录成功")
+        else:
+            tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录失败")
 
 
 @tgbot.message_handler(commands=['getlog'])
@@ -144,6 +173,15 @@ def bot_getlog(message):
     if check_chat_id(message):
         logger.info("Telegram 发送日志")
         tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
+
+
+@tgbot.message_handler(commands=['cancel'])
+def bot_cancel(message):
+    global cancel_flag
+    if check_chat_id(message):
+        logger.info("停止当前任务")
+        cancel_flag = True
+        driver.quit()
 
 
 def bot_send_photo():
@@ -220,6 +258,9 @@ class User:
         self.school = config.school
 
     def refresh(self, retry=0):
+        global cancel_flag
+        if cancel_flag:
+            return False
         if retry > 3:
             notification("网页加载失败3次", True)
             return False
@@ -234,12 +275,15 @@ class User:
             return True
 
     def login(self, retry=0):
+        global cancel_flag
+        if cancel_flag:
+            return False
         if retry > 3:
-            logger.error("登录失败3次")
-            return False, "登陆失败3次"
+            notification("登录失败3次，自动退出", True)
+            return False
         if not self.refresh():
-            logger.error("登录失败，网页加载失败")
-            return False, "登陆失败，网页加载失败"
+            notification("网页加载失败，自动退出", True)
+            return False
         try:
             driver.find_element(By.NAME, "loginfmt").send_keys(self.email)
             driver.find_element(By.ID, "idSIButton9").click()
@@ -258,20 +302,26 @@ class User:
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe")))
         except BaseException as e:
             bot_send_photo()
-            return False, "DUO加载失败"
+            notification("DUO验证失败", True)
+            return False
         else:
-            notification("请在手机上完成验证")
+            notification("请在手机上完成二步验证")
         # 等待完成验证
         try:
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
         except BaseException as e:
             bot_send_photo()
-            return False, "DUO验证失败"
+            notification("DUO验证失败", True)
+            return False
         else:
-            return True, "登陆成功"
+            logger.info("登录成功")
+            return True
 
-    def fillform(self, unit, type):
+    def fillform(self, unit, type, submit=False):
+        global cancel_flag
+        if cancel_flag:
+            return False
         try:
             # Student ID
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
@@ -297,7 +347,9 @@ class User:
                                 "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
             time.sleep(1)
             # 提交
-            driver.find_element(By.XPATH, "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+            if submit:
+                driver.find_element(By.XPATH,
+                                    "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
 
         except BaseException as e:
             notification("填表失败", True)
@@ -309,22 +361,22 @@ class User:
             bot_send_photo()
             return True
 
-
-def job(unit, type):
-    logger.info("开始执行填表任务")
-    webdriver_result = setup_driver()
-    if not webdriver_result:
-        notification("webdriver调用失败", True)
-    else:
-        login_result = user.login()
-        if not login_result[0]:
-            notification(f"{login_result[1]}", True)
+    def test_login(self):
+        logger.info("测试登录")
+        setup_driver()
+        result = user.login()
+        if result:
+            fillresult = user.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False)
+            try:
+                driver.quit()
+            except BaseException:
+                pass
+            if fillresult:
+                return False
+            else:
+                return False
         else:
-            user.fillform(unit=unit, type=type)
-    try:
-        driver.quit()
-    except BaseException:
-        pass
+            return False
 
 
 def main():
