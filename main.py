@@ -382,7 +382,7 @@ class User:
             except BaseException:
                 pass
             if fillresult:
-                return False
+                return True
             else:
                 return False
         else:
