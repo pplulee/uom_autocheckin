@@ -3,6 +3,7 @@ FROM python:3.9-slim
 WORKDIR /app
 ADD ActivityType.py /app
 ADD School.py /app
+ADD FormLink.py /app
 ADD main.py /app
 ADD requirements.txt /app
 

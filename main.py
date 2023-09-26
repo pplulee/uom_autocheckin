@@ -13,9 +13,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 from ActivityType import ActivityType
+from FormLink import FormLink
 from School import School
 
-FORM_URL = "https://forms.office.com/pages/responsepage.aspx?id=B8tSwU5hu0qBivA1z6kadxxo9NU4_-JCmplnw7Nn_rZUNVNIRldITkRLT1lTREVOWkMxWFo5RDcyRyQlQCN0PWcu"
+formlink = FormLink()
+
 cancel_flag = False
 
 parser = argparse.ArgumentParser(description="")
@@ -128,8 +130,13 @@ def bot_ping(message):
 @tgbot.message_handler(commands=['fill'])
 def bot_job(message):
     global cancel_flag
+    cancel_flag = False
     if check_chat_id(message):
         logger.info("开始执行填表任务")
+        url = formlink.get_link()
+        if url is None:
+            notification("未找到对应的表单链接", True)
+            return
         text = message.text
         # <unit> <type>
         match = re.match(r'/fill (\S+) (\S+)', text)
@@ -158,9 +165,13 @@ def bot_job(message):
 
 
 @tgbot.message_handler(commands=['testlogin'])
-def bot_getlog(message):
+def bot_testlogin(message):
     if check_chat_id(message):
         reply = tgbot.reply_to(message, "开始测试登录……")
+        url = formlink.get_link()
+        if url is None:
+            notification("未找到对应的表单链接", True)
+            return
         result = user.test_login()
         if result:
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录成功")
@@ -265,7 +276,7 @@ class User:
             notification("网页加载失败3次", True)
             return False
         try:
-            driver.get(FORM_URL)
+            driver.get(formlink.get_link())
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "loginfmt")))
         except BaseException as e:
             logger.error("页面加载失败，自动重试")
