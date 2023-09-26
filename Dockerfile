@@ -19,4 +19,4 @@ ENV tgbot_chat_id=""
 ENV tgbot_token=""
 
 
-CMD python -u /app/main.py --studentID $studentID --school $school --email $email --username $username --password $password --webdriver $webdriver --tgbot_chat_id $tgbot_chat_id --tgbot_token $tgbot_token
+CMD python -u /app/main.py --studentID "$studentID" --school "$school" --email "$email" --username "$username" --password "$password" --webdriver "$webdriver" --tgbot_chat_id "$tgbot_chat_id" --tgbot_token "$tgbot_token"
