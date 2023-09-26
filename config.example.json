@@ -1,11 +1,10 @@
 {
+  "studentID": "",
+  "email": "",
   "username": "",
   "password": "",
   "webdriver": "local",
-  "tgbot_enable": 0,
   "tgbot_chat_id": "",
   "tgbot_token": "",
-  "wxpusher_enable": 0,
-  "wxpusher_uid": "",
   "debug": 0
 }

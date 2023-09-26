@@ -1,32 +1,26 @@
 import argparse
-import datetime
 import logging
 import os.path
 import random
-import threading
 import time
 from json import loads
-from random import randint
 
-import pytz
-import schedule
 import telebot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from tzlocal import get_localzone
 
-from WXpusher import WXpusher
+FORM_URL = "https://forms.office.com/pages/responsepage.aspx?id=B8tSwU5hu0qBivA1z6kadxxo9NU4_-JCmplnw7Nn_rZUNVNIRldITkRLT1lTREVOWkMxWFo5RDcyRyQlQCN0PWcu"
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
 parser.add_argument("--webdriver", default="local")
+parser.add_argument("--studentID", default="local")
 parser.add_argument("--username", default="")
 parser.add_argument("--password", default="")
 parser.add_argument("--tgbot_chat_id", default="")
 parser.add_argument("--tgbot_token", default="")
-parser.add_argument("--wxpusher_uid", default="")
 parser.add_argument("--debug", default=False, action="store_true")
 args = parser.parse_args()
 
@@ -52,121 +46,104 @@ class Config:
             configfile = open("config.json" if args.config_path == "" else args.config_path, "r")
             self.configdata = loads(configfile.read())
             configfile.close()
+            self.studentID = self.configdata["studentID"]
+            self.email = self.configdata["email"]
             self.username = self.configdata["username"]
             self.password = self.configdata["password"]
             self.webdriver = self.configdata["webdriver"]
             self.debug = self.configdata["debug"] == 1
-            if self.configdata["tgbot_enable"] == 1:
-                self.tgbot_enable = True
-                self.tgbot_chat_id = self.configdata["tgbot_chat_id"]
-                self.tgbot_token = self.configdata["tgbot_token"]
-            if self.configdata["wxpusher_enable"] == 1:
-                self.wxpusher_enable = True
-                self.wxpusher_uid = self.configdata["wxpusher_uid"]
+            self.tgbot_chat_id = self.configdata["tgbot_chat_id"]
+            self.tgbot_token = self.configdata["tgbot_token"]
         else:  # 从命令行参数读取
             self.webdriver = args.webdriver
+            self.studentID = args.studentID
+            self.email = args.email
             self.username = args.username
             self.password = args.password
             self.debug = args.debug
-            if args.tgbot_chat_id != "" and args.tgbot_token != "":
-                self.tgbot_enable = True
-                self.tgbot_chat_id = args.tgbot_chat_id
-                self.tgbot_token = args.tgbot_token
-            if args.wxpusher_uid != "":
-                self.wxpusher_enable = True
-                self.wxpusher_uid = args.wxpusher_uid
+            self.tgbot_chat_id = args.tgbot_chat_id
+            self.tgbot_token = args.tgbot_token
         self.isremote = self.webdriver != "local"
-        if self.username == "" or self.password == "":
-            logger.error("用户名或密码为空")
+        if self.email == "":
+            logger.error("邮箱为空")
+            exit()
+        if self.username == "":
+            logger.error("用户名为空")
+            exit()
+        if self.password == "":
+            logger.error("密码为空")
+            exit()
+        if self.studentID == "":
+            logger.error("学生ID为空")
             exit()
         if self.webdriver == "":
             logger.error("webdriver为空")
             exit()
-        self.tzlondon = pytz.timezone("Europe/London")  # Time zone
-        self.tzlocal = get_localzone()
 
 
 config = Config()
-
-if config.tgbot_enable:
-    tgbot = telebot.TeleBot(config.tgbot_token)
+tgbot = telebot.TeleBot(config.tgbot_token)
 
 
-    def check_chat_id(message):
-        if str(message.chat.id) == config.tgbot_chat_id:
-            return True
-        else:
-            tgbot.reply_to(message, "你没有权限使用此命令")
-            return False
+def check_chat_id(message):
+    if str(message.chat.id) == config.tgbot_chat_id:
+        return True
+    else:
+        tgbot.reply_to(message, "你没有权限使用此命令")
+        return False
 
 
-    def bot_send_message(content):
-        tgbot.send_message(chat_id=config.tgbot_chat_id, text=content)
+def bot_send_message(content):
+    tgbot.send_message(chat_id=config.tgbot_chat_id, text=content)
 
 
-    @tgbot.message_handler(commands=['start', 'ping'])
-    def bot_ping(message):
-        if check_chat_id(message):
-            tgbot.reply_to(message, '还活着捏')
+@tgbot.message_handler(commands=['start', 'ping'])
+def bot_ping(message):
+    if check_chat_id(message):
+        tgbot.reply_to(message, '还活着捏')
 
 
-    @tgbot.message_handler(commands=['nextclass'])
-    def bot_nextclass(message):
-        if check_chat_id(message):
-            tgbot.reply_to(message, f"下节课是：{user.next_class}")
+@tgbot.message_handler(commands=['job'])
+def bot_job(message):
+    if check_chat_id(message):
+        logger.info("手动执行任务")
+        tgbot.reply_to(message, "已发送请求")
+        job()
 
 
-    @tgbot.message_handler(commands=['nexttime'])
-    def bot_nexttime(message):
-        if check_chat_id(message):
-            tgbot.reply_to(message, f"下节课的时间：{user.next_time}")
+@tgbot.message_handler(commands=['getlog'])
+def bot_getlog(message):
+    if check_chat_id(message):
+        logger.info("Telegram 发送日志")
+        tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
 
 
-    @tgbot.message_handler(commands=['job'])
-    def bot_job(message):
-        if check_chat_id(message):
-            logger.info("手动执行任务")
-            tgbot.reply_to(message, "已发送请求")
-            job()
+def bot_start_polling():
+    tgbot.infinity_polling(skip_pending=True, timeout=10)
 
 
-    @tgbot.message_handler(commands=['getlog'])
-    def bot_getlog(message):
-        if check_chat_id(message):
-            logger.info("Telegram 发送日志")
-            tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
+def record_screen():
+    try:
+        # 保存页面到文件
+        with open("save.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        # 保存页面截图到文件
+        driver.save_screenshot("save.png")
+    except BaseException:
+        logger.error("保存截图失败")
+    else:
+        logger.info("保存截图成功")
 
 
-    @tgbot.message_handler(commands=['checkwebsite'])
-    def check_website(message):
-        if check_chat_id(message):
-            logger.info("执行检测学校网站")
-            reply = tgbot.reply_to(message, "正在检测网站……")
-            setup_driver()
-            tgbot.edit_message_text(chat_id=config.tgbot_chat_id, message_id=reply.message_id,
-                                    text="网站正常" if user.refresh() else "网站异常")
-            driver.quit()
-
-
-    def bot_start_polling():
-        tgbot.infinity_polling(skip_pending=True, timeout=10)
-
-
-    thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
-    thread_bot.start()
-
-if config.wxpusher_enable:
-    wxpusher = WXpusher(config.wxpusher_uid)
+# thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
+# thread_bot.start()
 
 
 def notification(content, error=False):
     logger.info(content) if not error else logger.error(content)
     if error:
         content = f"错误：{content}"
-    if config.tgbot_enable:
-        bot_send_message(content)
-    if config.wxpusher_enable:
-        wxpusher.send_message(content)
+    bot_send_message(content)
 
 
 def setup_driver():
@@ -207,18 +184,18 @@ def setup_driver():
 
 class User:
     def __init__(self):
+        self.studentID = config.studentID
+        self.email = config.email
         self.username = config.username
         self.password = config.password
-        self.next_class = "未获取"
-        self.next_time = "未获取"
 
     def refresh(self, retry=0):
         if retry > 3:
             notification("网页加载失败3次", True)
             return False
         try:
-            driver.get('https://my.manchester.ac.uk/MyCheckIn')
-            time.sleep(5)
+            driver.get(FORM_URL)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "loginfmt")))
         except BaseException as e:
             logger.error("页面加载失败，自动重试")
             logger.error(e)
@@ -234,15 +211,10 @@ class User:
             logger.error("登录失败，网页加载失败")
             return False, "登陆失败，网页加载失败"
         try:
-            WebDriverWait(driver, 8).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "c-button--logout")))  # 检测登出按钮
-        except BaseException:
-            pass  # 未登录
-        else:
-            return True, "已登录"  # 找到登出按钮
-        logger.info(f"开始第{retry}次登录")
-        try:
-            driver.find_element(By.ID, "username").send_keys(self.username)
+            driver.find_element(By.NAME, "loginfmt").send_keys(self.email)
+            driver.find_element(By.ID, "idSIButton9").click()
+            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, "username"))).send_keys(
+                self.username)
             driver.find_element(By.ID, "password").send_keys(self.password)
             time.sleep(1)
             driver.find_element(By.NAME, "submit").click()
@@ -250,109 +222,69 @@ class User:
             logger.error("登陆失败，自动重试")
             logger.error(e)
             return self.login(retry + 1)
-        else:
-            try:
-                driver.find_element(By.XPATH, "//*[@id='msg']")
-            except BaseException:
-                pass
-            else:
-                notification("用户名或密码错误，退出程序", True)
-                driver.quit()
-                exit()
-        WebDriverWait(driver, 5).until_not(EC.presence_of_element_located((By.NAME, "submit")))  # 等待登录按钮消失
-        logger.info("登录成功")
-        return True, "登陆成功"
 
-    def checkin(self):
+        # 处理DUO
         try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "StudentSelfCheckinSubmit"))).click()  # 等待签到成功
-        except BaseException:  # 没有可签到项目
-            logger.info("没有可签到项目")
-            return True, "没有可签到项目"
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe")))
+        except BaseException as e:
+            notification("DUO加载失败，已结束运行", True)
+            return False, "DUO加载失败"
         else:
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, "//*[text()='Check-in successful']")))  # 成功点击，检测是否已经成功
-            except BaseException as e:
-                logger.error("签到执行失败")
-                logger.error(e)
-                return False, "签到失败"
-            else:
-                notification("完成了一次签到")
-                return True, "签到成功"
-
-    def getcheckintime(self):
+            notification("请在手机上完成验证")
+        # 等待完成验证
         try:
-            content = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, "//*[contains(text(),'Check-in open at ')]"))).text
-        except BaseException:
-            self.next_class = "未获取"
-            return None
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
+        except BaseException as e:
+            notification("DUO验证失败，已结束运行", True)
+            return False, "DUO验证失败"
         else:
-            try:
-                driver.find_element(By.XPATH, "//*[text()='Check-in successful']")
-            except BaseException:
-                # 第一个项目未签到
-                self.next_class = driver.find_elements(By.CLASS_NAME, "u-font-bold")[2].text
-            else:
-                # 第一个项目已签到，抓取下一个项目的时间
-                self.next_class = driver.find_elements(By.CLASS_NAME, "u-font-bold")[3].text
-            self.next_time = randomtime(content[-5:])  # 首个任务的时间
-            return self.next_time
+            return True, "登陆成功"
+
+    def fillform(self, school="", unit="", type=""):
+        try:
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
+                self.studentID)
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/div/div").click()
+            driver.find_element(By.XPATH, "/html/body/div[2]/div/div[4]").click()
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[3]/div[2]/div/span/input").send_keys(unit)
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/div/div").click()
+            if type == "Lab":
+                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[1]").click()
+            elif type == "Lecture":
+                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[2]").click()
+            elif type == "Seminar":
+                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[5]").click()
+            elif type == "Workshop":
+                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[7]").click()
+            driver.find_element(By.XPATH,
+                                "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
+            time.sleep(1)
+            # 提交
+            driver.find_element(By.XPATH, "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+
+        except BaseException as e:
+            notification("填表失败", True)
+            logger.error(e)
+            record_screen()
+        else:
+            notification("填表成功")
+            record_screen()
+            tgbot.send_photo(chat_id=config.tgbot_chat_id, photo=open('save.png', 'rb'))
+            return True
 
 
-def randomtime(time):  # 随机时间
-    return modifytime(int(time[:2]), int(time[3:]) + randint(0, 7), randint(0, 59))
-
-
-def modifytime(hh, mm, ss):  # 换算时区
-    date = datetime.date.today().strftime("%Y/%m/%d").split("/")
-    time = datetime.datetime(int(date[0]), int(date[1]), int(date[2]), hh, mm, ss)
-    time = config.tzlondon.localize(time)
-    time = time.astimezone(config.tzlocal)
-    return [time.strftime('%H:%M:%S'), f"{hh}:{mm}:{ss}"]  # 修正时区|伦敦时区
-
-
-def dailycheck():
-    logger.info("开始执行每日任务")
-    if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
-        # 周末不运行，设置下一天
-        logger.info("今天是周末，不运行")
-    else:
-        schedule.clear("checkin_task")
-        nexttime = modifytime(randint(4, 7), randint(0, 59), randint(0, 59))
-        logger.info(f"下次签到时间：{nexttime[1]}")
-        schedule.every().day.at(nexttime[0]).do(job).tag("checkin_task")  # 随机时间执行首次任务
-
-
-def job():
-    logger.info("开始执行签到任务")
-    schedule.clear("checkin_task")
+def job(unit="", type=""):
+    logger.info("开始执行填表任务")
     webdriver_result = setup_driver()
-    next_time = None
     if not webdriver_result:
-        notification("webdriver调用失败，15分钟后重试", True)
-        next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
+        notification("webdriver调用失败", True)
     else:
         login_result = user.login()
         if not login_result[0]:
-            notification(f"{login_result[1]}，15分钟后重试", True)
-            next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
+            notification(f"{login_result[1]}", True)
         else:
-            checkin_result = user.checkin()
-            if not checkin_result[0]:
-                notification(f"{checkin_result[1]}，15分钟后重试", True)
-                next_time = (datetime.datetime.now() + datetime.timedelta(seconds=900)).strftime("%H:%M:%S")
-            else:
-                checkin_time = user.getcheckintime()
-                if checkin_time is None:
-                    notification("今天已完成所有签到，将在次日自动运行")
-                else:
-                    notification(f"下一节课是：{user.next_class}\n签到时间：{checkin_time[1]}")
-                    next_time = checkin_time[0]
-    if next_time is not None:
-        schedule.every().day.at(next_time).do(job).tag("checkin_task")
+            checkin_result = user.fillform(unit=unit, type=type)
     try:
         driver.quit()
     except BaseException:
@@ -361,14 +293,9 @@ def job():
 
 def main():
     notification("自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知")
-    schedule.clear()
-    schedule.every().day.at(modifytime(1, 0, 0)[0]).do(dailycheck).tag("dailyjob")
     global user
     user = User()
-    job()
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    tgbot.infinity_polling(skip_pending=True, timeout=10)
 
 
 if __name__ == '__main__':
