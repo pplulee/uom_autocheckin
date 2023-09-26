@@ -2,6 +2,7 @@ import argparse
 import logging
 import os.path
 import random
+import re
 import time
 from json import loads
 
@@ -103,12 +104,20 @@ def bot_ping(message):
         tgbot.reply_to(message, '还活着捏')
 
 
-@tgbot.message_handler(commands=['job'])
+@tgbot.message_handler(commands=['fill'])
 def bot_job(message):
     if check_chat_id(message):
-        logger.info("手动执行任务")
-        tgbot.reply_to(message, "已发送请求")
-        job()
+        logger.info("开始执行填表任务")
+        text = message.text
+        # <unit> <type>
+        match = re.match(r'/fill (\S+) (\S+)', text)
+        if not match:
+            tgbot.reply_to(message, "格式有误，请使用 /fill <unit> <type>")
+            return
+        unit = match.group(1)
+        fill_type = match.group(2)
+        tgbot.reply_to(message, "开始执行填表任务")
+        job(unit, fill_type)
 
 
 @tgbot.message_handler(commands=['getlog'])
@@ -117,6 +126,10 @@ def bot_getlog(message):
         logger.info("Telegram 发送日志")
         tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
 
+
+def bot_send_photo():
+    record_screen()
+    tgbot.send_photo(chat_id=config.tgbot_chat_id, photo=open('save.png', 'rb'))
 
 def bot_start_polling():
     tgbot.infinity_polling(skip_pending=True, timeout=10)
@@ -133,10 +146,6 @@ def record_screen():
         logger.error("保存截图失败")
     else:
         logger.info("保存截图成功")
-
-
-# thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
-# thread_bot.start()
 
 
 def notification(content, error=False):
@@ -227,7 +236,7 @@ class User:
         try:
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe")))
         except BaseException as e:
-            notification("DUO加载失败，已结束运行", True)
+            bot_send_photo()
             return False, "DUO加载失败"
         else:
             notification("请在手机上完成验证")
@@ -236,12 +245,12 @@ class User:
             WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
         except BaseException as e:
-            notification("DUO验证失败，已结束运行", True)
+            bot_send_photo()
             return False, "DUO验证失败"
         else:
             return True, "登陆成功"
 
-    def fillform(self, school="", unit="", type=""):
+    def fillform(self, unit, type):
         try:
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
                 self.studentID)
@@ -257,6 +266,9 @@ class User:
                 driver.find_element(By.XPATH, "/html/body/div[2]/div/div[5]").click()
             elif type == "Workshop":
                 driver.find_element(By.XPATH, "/html/body/div[2]/div/div[7]").click()
+            else:
+                driver.find_element(By.XPATH, "/html/body/div[2]/div/div[8]").click()
+                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/span/input").send_keys(type)
             driver.find_element(By.XPATH,
                                 "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
             time.sleep(1)
@@ -266,15 +278,15 @@ class User:
         except BaseException as e:
             notification("填表失败", True)
             logger.error(e)
-            record_screen()
+            bot_send_photo()
+            return False
         else:
             notification("填表成功")
-            record_screen()
-            tgbot.send_photo(chat_id=config.tgbot_chat_id, photo=open('save.png', 'rb'))
+            bot_send_photo()
             return True
 
 
-def job(unit="", type=""):
+def job(unit, type):
     logger.info("开始执行填表任务")
     webdriver_result = setup_driver()
     if not webdriver_result:
@@ -284,7 +296,7 @@ def job(unit="", type=""):
         if not login_result[0]:
             notification(f"{login_result[1]}", True)
         else:
-            checkin_result = user.fillform(unit=unit, type=type)
+            user.fillform(unit=unit, type=type)
     try:
         driver.quit()
     except BaseException:
