@@ -1,5 +1,7 @@
 import datetime
 
+import pytz
+
 
 class FormLink:
     def __init__(self):
@@ -31,7 +33,9 @@ class FormLink:
         ]
 
     def get_link(self):
-        today = datetime.date.today()
+        london_tz = pytz.timezone('Europe/London')
+        current_datetime = datetime.datetime.now(london_tz)
+        today = current_datetime.date()
         for link in self.links:
             if link["begin"] <= today <= link["end"]:
                 return link["link"]

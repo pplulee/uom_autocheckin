@@ -146,7 +146,6 @@ def bot_job(message):
         unit = match.group(1)
         fill_type = match.group(2)
         reply = tgbot.reply_to(message, "开始执行填表任务……")
-        logger.info("开始执行填表任务")
         webdriver_result = setup_driver()
         if not webdriver_result:
             notification("webdriver调用失败", True)
@@ -391,7 +390,8 @@ class User:
 
 
 def main():
-    notification("自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知")
+    notification(
+        "自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知\n！使用前请确保已设置默认二步验证推送设备！")
     global user
     user = User()
     tgbot.infinity_polling(skip_pending=True, timeout=10)
