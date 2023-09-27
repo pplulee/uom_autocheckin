@@ -187,7 +187,6 @@ def bot_getlog(message):
 
 @tgbot.callback_query_handler(func=lambda call: True)
 def bot_callback_query(call):
-    logger.info(call.data)
     global option_flag
     if check_chat_id(message=call.message):
         if call.data == "confirm":
@@ -325,6 +324,7 @@ class User:
             return True
 
     def fillform(self, unit, type, submit=False):
+        global option_flag
         try:
             # Student ID
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
@@ -342,8 +342,9 @@ class User:
 
             # Activity Type
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/div/div").click()
-            driver.find_element(By.XPATH, ActivityType.xpath[type]).click()
-            if type == "Other":
+            if type in list(ActivityType.xpath.keys()):
+                driver.find_element(By.XPATH, ActivityType.xpath[type]).click()
+            else:
                 driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/span/input").send_keys(type)
 
             driver.find_element(By.XPATH,
@@ -354,6 +355,7 @@ class User:
             cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
             markup.add(confirm_button, cancel_button)
             tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
+            option_flag = ""
             while option_flag == "":
                 time.sleep(1)
                 if option_flag == "cancel":
