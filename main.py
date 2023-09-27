@@ -18,7 +18,7 @@ from School import School
 
 formlink = FormLink()
 
-cancel_flag = False
+option_flag = ""
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument("--config_path", default="")
@@ -129,8 +129,8 @@ def bot_ping(message):
 
 @tgbot.message_handler(commands=['fill'])
 def bot_job(message):
-    global cancel_flag
-    cancel_flag = False
+    global option_flag
+    option_flag = ""
     if check_chat_id(message):
         logger.info("开始执行填表任务")
         url = formlink.get_link()
@@ -160,7 +160,7 @@ def bot_job(message):
             driver.quit()
         except BaseException:
             pass
-        cancel_flag = False
+        option_flag = ""
 
 
 @tgbot.message_handler(commands=['testlogin'])
@@ -185,13 +185,15 @@ def bot_getlog(message):
         tgbot.send_document(chat_id=config.tgbot_chat_id, document=open('log.txt', 'rb'))
 
 
-@tgbot.message_handler(commands=['cancel'])
-def bot_cancel(message):
-    global cancel_flag
-    if check_chat_id(message):
-        logger.info("停止当前任务")
-        cancel_flag = True
-        driver.quit()
+@tgbot.callback_query_handler(func=lambda call: True)
+def bot_callback_query(call):
+    logger.info(call.data)
+    global option_flag
+    if check_chat_id(message=call.message):
+        if call.data == "confirm":
+            option_flag = "confirm"
+        elif call.data == "cancel":
+            option_flag = "cancel"
 
 
 def bot_send_photo():
@@ -268,9 +270,6 @@ class User:
         self.school = config.school
 
     def refresh(self, retry=0):
-        global cancel_flag
-        if cancel_flag:
-            return False
         if retry > 3:
             notification("网页加载失败3次", True)
             return False
@@ -285,9 +284,6 @@ class User:
             return True
 
     def login(self, retry=0):
-        global cancel_flag
-        if cancel_flag:
-            return False
         if retry > 3:
             notification("登录失败3次，自动退出", True)
             return False
@@ -329,9 +325,6 @@ class User:
             return True
 
     def fillform(self, unit, type, submit=False):
-        global cancel_flag
-        if cancel_flag:
-            return False
         try:
             # Student ID
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
@@ -355,11 +348,23 @@ class User:
 
             driver.find_element(By.XPATH,
                                 "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
-            time.sleep(1)
-            # 提交
-            if submit:
-                driver.find_element(By.XPATH,
-                                    "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+            bot_send_photo()
+            markup = telebot.types.InlineKeyboardMarkup()
+            confirm_button = telebot.types.InlineKeyboardButton("确认", callback_data='confirm')
+            cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
+            markup.add(confirm_button, cancel_button)
+            tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
+            while option_flag == "":
+                time.sleep(1)
+                if option_flag == "cancel":
+                    notification("任务已取消")
+                    return False
+                elif option_flag == "confirm":
+                    if submit:
+                        driver.find_element(By.XPATH,
+                                            "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+                    else:
+                        notification("测试模式，不提交表单")
 
         except BaseException as e:
             notification("填表失败", True)
