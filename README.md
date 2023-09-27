@@ -7,11 +7,14 @@
 ## 指令列表
 
 ```
+/start - 开始使用
 /ping - 测试是否在线
+/help - 获取指令列表
 /schools - 获取学校列表
 /activities - 获取课程类型
+/nextclass - 获取下一节课信息
 /testlogin - 测试登录
-/cancel - 取消正在执行的任务
+/getlog - 获取日志
 
 /fill <Unit Code> <课程类型> - 填写签到信息
 

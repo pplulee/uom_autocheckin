@@ -126,7 +126,7 @@ def bot_ping(message):
 def bot_help(message):
     if check_chat_id(message):
         text = (f"可用指令：\n"
-                f"/start - 检测存活\n"
+                f"/start - 开始使用\n"
                 f"/ping - 检测存活\n"
                 f"/help - 获取指令列表\n"
                 f"/schools - 获取学院列表\n"
