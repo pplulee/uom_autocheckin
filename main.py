@@ -144,8 +144,8 @@ def bot_nextclass(message):
             if course is None:
                 tgbot.reply_to(message, "今天没有剩余课程")
             else:
-                tgbot.reply_to(message,
-                               f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}")
+                text = f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}\n签到指令： `/fill {course['unit']} {course['type']}`"
+                tgbot.reply_to(message, text, parse_mode="Markdown")
 
 
 @tgbot.message_handler(commands=['fill'])
@@ -160,7 +160,7 @@ def bot_job(message):
             return
         text = message.text
         # <unit> <type>
-        match = re.match(r'/fill (\S+) (\S+)', text)
+        match = re.match(r'/fill (\S+) (.+)', text)
         if not match:
             tgbot.reply_to(message, "格式有误，请使用 /fill <unit> <type>")
             return
@@ -370,6 +370,7 @@ class User:
             if type in list(ActivityType.xpath.keys()):
                 driver.find_element(By.XPATH, ActivityType.xpath[type]).click()
             else:
+                driver.find_element(By.XPATH, ActivityType.xpath["Other"]).click()
                 driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/span/input").send_keys(type)
 
             driver.find_element(By.XPATH,

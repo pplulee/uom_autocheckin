@@ -4,7 +4,15 @@ import icalendar
 import pytz
 from requests import get
 
+from ActivityType import ActivityType, find_activity_type
+
 london_timezone = pytz.timezone('Europe/London')
+
+
+def phrase(text):
+    text = text.replace("_", " ")
+    text = text.replace("&", " ")
+    return text
 
 
 class Timetable:
@@ -28,8 +36,12 @@ class Timetable:
                 if len(info) < 3:
                     continue
                 this_class['unit'] = info[0]
-                this_class['type'] = info[1]
-                this_class['location'] = str(event.get('location'))
+                type = info[1]
+                if (type_index := find_activity_type(type)) == -1:
+                    this_class['type'] = phrase(type)
+                else:
+                    this_class['type'] = list(ActivityType.xpath.keys())[type_index]
+                this_class['location'] = phrase(str(event.get('location')))
                 this_class['time'] = event['dtstart'].dt.astimezone(london_timezone).strftime("%Y-%m-%d %H:%M:%S")
                 # 时间已过
                 if datetime.datetime.strptime(this_class['time'], "%Y-%m-%d %H:%M:%S") < datetime.datetime.now():
