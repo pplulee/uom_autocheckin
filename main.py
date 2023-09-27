@@ -122,14 +122,30 @@ def bot_ping(message):
         tgbot.reply_to(message, '还活着捏')
 
 
+@tgbot.message_handler(commands=['help'])
+def bot_help(message):
+    if check_chat_id(message):
+        text = (f"可用指令：\n"
+                f"/start - 检测存活\n"
+                f"/ping - 检测存活\n"
+                f"/help - 获取指令列表\n"
+                f"/schools - 获取学院列表\n"
+                f"/activities - 获取课程类型列表\n"
+                f"/nextclass - 获取下一节课的信息\n"
+                f"`/fill <unit> <type>` - 填表\n"
+                f"/testlogin - 检测登录\n"
+                f"/getlog - 获取日志")
+        tgbot.reply_to(message, text, parse_mode="Markdown")
+
+
 @tgbot.message_handler(commands=['schools'])
-def bot_ping(message):
+def bot_schools(message):
     if check_chat_id(message):
         tgbot.reply_to(message, '可用学院：\n' + '\n'.join(School.xpath.keys()))
 
 
 @tgbot.message_handler(commands=['activities'])
-def bot_ping(message):
+def bot_activities(message):
     if check_chat_id(message):
         tgbot.reply_to(message, '可用活动类型：\n' + '\n'.join(ActivityType.xpath.keys()))
 

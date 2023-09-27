@@ -7,5 +7,6 @@
   "webdriver": "local",
   "tgbot_chat_id": "",
   "tgbot_token": "",
+  "ics_url": "",
   "debug": 0
 }
