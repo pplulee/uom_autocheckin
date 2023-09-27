@@ -25,6 +25,8 @@ class Timetable:
             if event['dtstart'].dt.date() == datetime.date.today():
                 this_class = {}
                 info = str(event['summary']).split('/')
+                if len(info) < 3:
+                    continue
                 this_class['unit'] = info[0]
                 this_class['type'] = info[1]
                 this_class['location'] = str(event.get('location'))
