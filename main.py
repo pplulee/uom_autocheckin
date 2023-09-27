@@ -1,11 +1,14 @@
 import argparse
+import datetime
 import logging
 import os.path
 import random
 import re
+import threading
 import time
 from json import loads
 
+import schedule
 import telebot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -15,6 +18,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from ActivityType import ActivityType
 from FormLink import FormLink
 from School import School
+from Timetable import Timetable
 
 formlink = FormLink()
 
@@ -30,6 +34,7 @@ parser.add_argument("--password", default="")
 parser.add_argument("--school", default="")
 parser.add_argument("--tgbot_chat_id", default="")
 parser.add_argument("--tgbot_token", default="")
+parser.add_argument("--ics_url", default="")
 parser.add_argument("--debug", default=False, action="store_true")
 args = parser.parse_args()
 
@@ -62,6 +67,7 @@ class Config:
             self.debug = self.configdata["debug"] == 1
             self.tgbot_chat_id = self.configdata["tgbot_chat_id"]
             self.tgbot_token = self.configdata["tgbot_token"]
+            self.ics_url = self.configdata["ics_url"]
         else:  # 从命令行参数读取
             self.webdriver = args.webdriver
             self.studentID = args.studentID
@@ -72,6 +78,7 @@ class Config:
             self.debug = args.debug
             self.tgbot_chat_id = args.tgbot_chat_id
             self.tgbot_token = args.tgbot_token
+            self.ics_url = args.ics_url
         self.isremote = self.webdriver != "local"
         if self.email == "":
             logger.error("邮箱为空")
@@ -125,6 +132,20 @@ def bot_ping(message):
 def bot_ping(message):
     if check_chat_id(message):
         tgbot.reply_to(message, '可用活动类型：\n' + '\n'.join(ActivityType.xpath.keys()))
+
+
+@tgbot.message_handler(commands=['nextclass'])
+def bot_nextclass(message):
+    if check_chat_id(message):
+        if timetable is None:
+            tgbot.reply_to(message, "未设置课表订阅链接")
+        else:
+            course = timetable.get_next_class()
+            if course is None:
+                tgbot.reply_to(message, "今天没有剩余课程")
+            else:
+                tgbot.reply_to(message,
+                               f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}")
 
 
 @tgbot.message_handler(commands=['fill'])
@@ -202,6 +223,10 @@ def bot_send_photo():
 
 def bot_start_polling():
     tgbot.infinity_polling(skip_pending=True, timeout=10)
+
+
+thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
+thread_bot.start()
 
 
 def record_screen():
@@ -396,12 +421,67 @@ class User:
             return False
 
 
+# 每天执行
+@schedule.repeat(schedule.every().day.at("06:00"))
+def refresh_today():
+    if config.ics_url == "":
+        return True
+    logger.info("开始执行每日任务")
+    if (datetime.datetime.today().isoweekday() in [6, 7]) and not config.debug:
+        # 周末不运行，设置下一天
+        logger.info("今天是周末，不运行")
+        return True
+    global timetable
+    if timetable.refresh_today():
+        logger.info("课表刷新成功")
+        # 开始设置通知定时任务
+        set_next_task()
+        return True
+    else:
+        notification("课表刷新失败", True)
+        return False
+
+
+def set_next_task():
+    # 开始设置通知定时任务
+    if timetable is not None:
+        course = timetable.get_next_class()
+        if course is not None:
+            time = datetime.datetime.strptime(course['time'], "%Y-%m-%d %H:%M:%S") - datetime.timedelta(minutes=20)
+            time = time.strftime("%H:%M")
+            logger.info(f"设置下一次通知时间为{time}")
+            schedule.every().day.at(time).do(notice_course, pop=True).tag("notify")
+
+
+def notice_course(pop=False):
+    schedule.clear("notify")
+    if timetable is not None:
+        course = timetable.get_next_class(pop)
+        if course is not None:
+            notification(
+                f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}")
+            set_next_task()
+
+
+if config.ics_url == "":
+    timetable = None
+    logger.info("未设置课表，不启用课表功能")
+else:
+    timetable = Timetable(config.ics_url)
+    if not timetable.refresh_today():
+        notification("课表初始化失败，请检查链接是否正确", True)
+        exit()
+
+
 def main():
     notification(
         "自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知\n！使用前请确保已设置默认二步验证推送设备！")
     global user
     user = User()
-    tgbot.infinity_polling(skip_pending=True, timeout=10)
+    set_next_task()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 
 if __name__ == '__main__':
