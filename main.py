@@ -475,8 +475,8 @@ def notice_course(pop=False):
     if timetable is not None:
         course = timetable.get_next_class(pop)
         if course is not None:
-            notification(
-                f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}")
+            text = f"下一节课：{course['unit']}\n类型：{course['type']}\n位置：{course['location']}\n时间：{course['time']}\n签到指令： `/fill {course['unit']} {course['type']}`"
+            tgbot.send_message(config.tgbot_chat_id, text, parse_mode="Markdown")
             set_next_task()
 
 
