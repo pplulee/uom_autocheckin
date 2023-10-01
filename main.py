@@ -226,10 +226,11 @@ def bot_getlog(message):
 def bot_callback_query(call):
     global option_flag
     if check_chat_id(message=call.message):
-        if call.data == "confirm":
-            option_flag = "confirm"
-        elif call.data == "cancel":
-            option_flag = "cancel"
+        match call.data:
+            case "confirm":
+                option_flag = "confirm"
+            case "cancel":
+                option_flag = "cancel"
 
 
 def bot_send_photo():
@@ -238,7 +239,7 @@ def bot_send_photo():
 
 
 def bot_start_polling():
-    tgbot.infinity_polling(skip_pending=True, timeout=10)
+    tgbot.infinity_polling(skip_pending=True, timeout=15)
 
 
 thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
@@ -400,15 +401,19 @@ class User:
             option_flag = ""
             while option_flag == "":
                 time.sleep(1)
-                if option_flag == "cancel":
-                    notification("任务已取消")
-                    return False
-                elif option_flag == "confirm":
-                    if submit:
-                        driver.find_element(By.XPATH,
-                                            "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
-                    else:
-                        notification("测试模式，不提交表单")
+                match option_flag:
+                    case "cancel":
+                        notification("任务已取消")
+                        return False
+                    case "confirm":
+                        if submit:
+                            driver.find_element(By.XPATH,
+                                                "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+                        else:
+                            notification("测试模式，不提交表单")
+                        break
+
+
 
         except BaseException as e:
             notification("填表失败", True)
