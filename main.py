@@ -346,13 +346,26 @@ class User:
 
         # 处理DUO
         try:
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe")))
+            driver.switch_to.frame(
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe"))))
         except BaseException as e:
             bot_send_photo()
-            notification("DUO验证失败", True)
+            notification("DUO加载失败", True)
             return False
         else:
+            try:
+                # 是否已自动推送
+                WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "message")))
+            except BaseException:
+                # 未自动推送，点击推送按钮
+                try:
+                    driver.find_element(By.CLASS_NAME, "auth-button").click()
+                except BaseException as e:
+                    bot_send_photo()
+                    notification("DUO推送失败", True)
+                    return False
             notification("请在手机上完成二步验证")
+        driver.switch_to.default_content()
         # 等待完成验证
         try:
             WebDriverWait(driver, 30).until(
