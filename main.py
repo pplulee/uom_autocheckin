@@ -411,9 +411,18 @@ class User:
             cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
             markup.add(confirm_button, cancel_button)
             tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
+
             option_flag = ""
+            start_time = time.time()
+
             while option_flag == "":
                 time.sleep(1)
+                waiting_time = time.time() - start_time
+
+                if waiting_time > 60:
+                    notification("等待超时，任务已取消", True)
+                    return False
+
                 match option_flag:
                     case "cancel":
                         notification("任务已取消")
