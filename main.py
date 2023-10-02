@@ -242,6 +242,18 @@ def bot_start_polling():
     tgbot.infinity_polling(skip_pending=True, timeout=15)
 
 
+tgbot.set_my_commands([
+    telebot.types.BotCommand("start", "开始使用"),
+    telebot.types.BotCommand("ping", "测试是否在线"),
+    telebot.types.BotCommand("help", "获取指令列表"),
+    telebot.types.BotCommand("schools", "获取学院列表"),
+    telebot.types.BotCommand("activities", "获取课程类型"),
+    telebot.types.BotCommand("nextclass", "获取下一节课的信息"),
+    telebot.types.BotCommand("testlogin", "测试登录"),
+    telebot.types.BotCommand("getlog", "获取日志"),
+    telebot.types.BotCommand("fill", "填表，参数：<Unit Code> <课程类型>")
+])
+
 thread_bot = threading.Thread(target=bot_start_polling, daemon=True)
 thread_bot.start()
 
@@ -387,8 +399,10 @@ class User:
 
             # School
             driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/div/div").click()
-            driver.find_element(By.XPATH, School.xpath[self.school]).click()
-            if self.school == "Other":
+            if self.school in list(School.xpath.keys()):
+                driver.find_element(By.XPATH, School.xpath[self.school]).click()
+            else:
+                driver.find_element(By.XPATH, School.xpath["Other"]).click()
                 driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/span/input").send_keys(
                     self.school)
 
@@ -410,32 +424,32 @@ class User:
             confirm_button = telebot.types.InlineKeyboardButton("确认", callback_data='confirm')
             cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
             markup.add(confirm_button, cancel_button)
-            tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
+            message = tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
 
             option_flag = ""
-            start_time = time.time()
+            waiting_time = time.time() + 60  # 最多等待60秒
 
             while option_flag == "":
                 time.sleep(1)
-                waiting_time = time.time() - start_time
 
-                if waiting_time > 60:
+                if time.time() > waiting_time:
                     notification("等待超时，任务已取消", True)
+                    tgbot.delete_message(config.tgbot_chat_id, message.message_id)
                     return False
 
                 match option_flag:
                     case "cancel":
+                        tgbot.delete_message(config.tgbot_chat_id, message.message_id)
                         notification("任务已取消")
                         return False
                     case "confirm":
+                        tgbot.delete_message(config.tgbot_chat_id, message.message_id)
                         if submit:
                             driver.find_element(By.XPATH,
                                                 "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
                         else:
                             notification("测试模式，不提交表单")
                         break
-
-
 
         except BaseException as e:
             notification("填表失败", True)
@@ -450,9 +464,9 @@ class User:
     def test_login(self):
         logger.info("测试登录")
         setup_driver()
-        result = user.login()
+        result = self.login()
         if result:
-            fillresult = user.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False)
+            fillresult = self.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False)
             try:
                 driver.quit()
             except BaseException:
@@ -519,7 +533,7 @@ else:
 
 def main():
     notification(
-        "自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知\n！使用前请确保已设置默认二步验证推送设备！")
+        "自动签到开始运行\n欢迎关注官方Telegram频道\nt.me/uom_autocheckin\n以获取最新通知\n")
     global user
     user = User()
     set_next_task()
