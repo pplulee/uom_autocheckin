@@ -292,14 +292,7 @@ def setup_driver():
     if not config.debug:
         options.add_argument("--headless")
     user_agents = [
-        # Windows Chrome
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-        # macOS Chrome
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-        # Linux Chrome
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.153 Mobile Safari/537.36"
     ]
     options.add_argument(f"user-agent={random.choice(user_agents)}")
     try:
@@ -357,18 +350,34 @@ class User:
             return self.login(retry + 1)
 
         # 处理DUO
+        duo_result = self.duo_push()
+        if not duo_result:
+            return False
+        try:
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
+        except BaseException:
+            bot_send_photo()
+            logger.error("获取表单失败")
+            return False
+        else:
+            logger.info("登录成功")
+            return True
+
+    def duo_push(self):
+        logger.info("检测是否需要DUO推送")
         try:
             driver.switch_to.frame(
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "duo_iframe"))))
+                WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.ID, "duo_iframe"))))
         except BaseException as e:
-            bot_send_photo()
-            notification("DUO加载失败", True)
-            return False
+            logger.info("无需DUO推送")
+            return self.duo_code()
         else:
             try:
                 # 是否已自动推送
                 WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.CLASS_NAME, "message")))
             except BaseException:
+                logger.info("未自动推送，尝试推送……")
                 # 未自动推送，点击推送按钮
                 try:
                     driver.find_element(By.CLASS_NAME, "auth-button").click()
@@ -378,17 +387,38 @@ class User:
                     return False
             notification("请在手机上完成二步验证")
         driver.switch_to.default_content()
-        # 等待完成验证
+        return self.duo_code()
+
+    def duo_code_capture(self):
         try:
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
+            code = WebDriverWait(driver, 2).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "verification-code"))).text
+            tgbot.send_message(config.tgbot_chat_id, f"验证码：{code}")
+            logger.info("已发送验证码")
+            return True
+        except BaseException:
+            return False
+
+    def duo_code(self):
+        logger.info("进入DUO Code")
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "card")))
         except BaseException as e:
             bot_send_photo()
-            notification("DUO验证失败", True)
+            notification("DUO Code验证失败", True)
             return False
-        else:
-            logger.info("登录成功")
-            return True
+        if not self.duo_code_capture():
+            logger.info("更换验证设备")
+            WebDriverWait(driver, 2).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "other-options-link"))).click()
+            element = WebDriverWait(driver, 2).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'li[data-testid="test-id-push"]')))
+            element.find_element(By.TAG_NAME, 'a').click()
+            if not self.duo_code_capture():
+                notification("DUO Code获取失败", True)
+                return False
+        return True
 
     def fillform(self, unit, type, submit=False):
         global option_flag
