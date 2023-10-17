@@ -359,6 +359,7 @@ class User:
         except BaseException:
             bot_send_photo()
             logger.error("获取表单失败")
+            tgbot.send_message(config.tgbot_chat_id, "填写验证码超时，请重新提交填表任务")
             return False
         else:
             logger.info("登录成功")
