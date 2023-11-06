@@ -213,6 +213,10 @@ def bot_testlogin(message):
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录成功")
         else:
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录失败")
+        try:
+            driver.quit()
+        except BaseException:
+            pass
 
 
 @tgbot.message_handler(commands=['getlog'])
