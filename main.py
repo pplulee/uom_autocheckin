@@ -213,10 +213,6 @@ def bot_testlogin(message):
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录成功")
         else:
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录失败")
-        try:
-            driver.quit()
-        except BaseException:
-            pass
 
 
 @tgbot.message_handler(commands=['getlog'])
@@ -359,7 +355,7 @@ class User:
             return False
         try:
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.XPATH, "//*[@id='question-list']/div[1]/div")))
+                EC.presence_of_element_located((By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input")))
         except BaseException:
             bot_send_photo()
             logger.error("获取表单失败")
@@ -429,32 +425,31 @@ class User:
         global option_flag
         try:
             # Student ID
-            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div/div[2]/div/span/input").send_keys(
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[1]/div[2]/div/span/input").send_keys(
                 self.studentID)
 
             # School
-            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div/div[2]/div/div/div").click()
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/div/div").click()
             if self.school in list(School.xpath.keys()):
                 driver.find_element(By.XPATH, School.xpath[self.school]).click()
             else:
                 driver.find_element(By.XPATH, School.xpath["Other"]).click()
-                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div/div/span/input").send_keys(
+                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[2]/div[2]/div/span/input").send_keys(
                     self.school)
 
             # Unit
-            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[3]/div/div[2]/div/span/input").send_keys(unit)
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[3]/div[2]/div/span/input").send_keys(unit)
 
             # Activity Type
-            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div/div/div/div").click()
+            driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/div/div").click()
             if type in list(ActivityType.xpath.keys()):
                 driver.find_element(By.XPATH, ActivityType.xpath[type]).click()
             else:
                 driver.find_element(By.XPATH, ActivityType.xpath["Other"]).click()
-                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div/div[2]/div/span/input").send_keys(
-                    type)
+                driver.find_element(By.XPATH, "//*[@id=\"question-list\"]/div[4]/div[2]/div/span/input").send_keys(type)
 
             driver.find_element(By.XPATH,
-                                "//*[@id=\"question-list\"]/div[5]/div/div[2]/div/div/div/div/label/span[1]/input").click()
+                                "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
             bot_send_photo()
             markup = telebot.types.InlineKeyboardMarkup()
             confirm_button = telebot.types.InlineKeyboardButton("确认", callback_data='confirm')
