@@ -454,37 +454,44 @@ class User:
 
             driver.find_element(By.XPATH,
                                 "//*[@id=\"question-list\"]/div[5]/div[2]/div/div/div/div/label/span[1]/input").click()
-            bot_send_photo()
-            markup = telebot.types.InlineKeyboardMarkup()
-            confirm_button = telebot.types.InlineKeyboardButton("确认", callback_data='confirm')
-            cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
-            markup.add(confirm_button, cancel_button)
-            message = tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
+            # bot_send_photo()
+            # markup = telebot.types.InlineKeyboardMarkup()
+            # confirm_button = telebot.types.InlineKeyboardButton("确认", callback_data='confirm')
+            # cancel_button = telebot.types.InlineKeyboardButton("取消", callback_data='cancel')
+            # markup.add(confirm_button, cancel_button)
+            # message = tgbot.send_message(config.tgbot_chat_id, "请点击下面的按钮确认：", reply_markup=markup)
 
-            option_flag = ""
-            waiting_time = time.time() + 60  # 最多等待60秒
+            # option_flag = ""
+            # waiting_time = time.time() + 60  # 最多等待60秒
+            #
+            # while option_flag == "":
+            #     time.sleep(1)
+            #
+            #     if time.time() > waiting_time:
+            #         notification("等待超时，任务已取消", True)
+            #         tgbot.delete_message(config.tgbot_chat_id, message.message_id)
+            #         return False
+            #
+            #     match option_flag:
+            #         case "cancel":
+            #             tgbot.delete_message(config.tgbot_chat_id, message.message_id)
+            #             notification("任务已取消")
+            #             return False
+            #         case "confirm":
+            #             tgbot.delete_message(config.tgbot_chat_id, message.message_id)
+            #             if submit:
+            #                 driver.find_element(By.XPATH,
+            #                                     "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
+            #             else:
+            #                 notification("测试模式，不提交表单")
+            #             break
 
-            while option_flag == "":
-                time.sleep(1)
-
-                if time.time() > waiting_time:
-                    notification("等待超时，任务已取消", True)
-                    tgbot.delete_message(config.tgbot_chat_id, message.message_id)
-                    return False
-
-                match option_flag:
-                    case "cancel":
-                        tgbot.delete_message(config.tgbot_chat_id, message.message_id)
-                        notification("任务已取消")
-                        return False
-                    case "confirm":
-                        tgbot.delete_message(config.tgbot_chat_id, message.message_id)
-                        if submit:
-                            driver.find_element(By.XPATH,
-                                                "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button").click()
-                        else:
-                            notification("测试模式，不提交表单")
-                        break
+            if submit:
+                driver.find_element(By.XPATH,
+                                    "//*[@id=\"form-main-content1\"]/div/div/div[2]/div[3]/div/button") \
+                    .click()
+            else:
+                notification("测试模式，不提交表单")
 
         except BaseException as e:
             notification("填表失败", True)
