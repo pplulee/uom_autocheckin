@@ -13,6 +13,7 @@ ADD main.py /app
 ADD requirements.txt /app
 
 RUN pip install -r requirements.txt
+RUN rm requirements.txt
 
 ENV studentID=""
 ENV school=""

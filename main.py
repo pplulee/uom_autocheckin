@@ -193,10 +193,6 @@ def bot_job(message):
                     tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="填表成功")
                 else:
                     tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="填表失败")
-        try:
-            driver.quit()
-        except BaseException:
-            pass
         option_flag = ""
 
 
@@ -213,10 +209,6 @@ def bot_testlogin(message):
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录成功")
         else:
             tgbot.edit_message_text(chat_id=reply.chat.id, message_id=reply.message_id, text="测试登录失败")
-        try:
-            driver.quit()
-        except BaseException:
-            pass
 
 
 @tgbot.message_handler(commands=['getlog'])
@@ -497,28 +489,18 @@ class User:
             notification("填表失败", True)
             logger.error(e)
             bot_send_photo()
+            driver.quit()
             return False
         else:
             notification("填表成功")
             bot_send_photo()
+            driver.quit()
             return True
 
     def test_login(self):
         logger.info("测试登录")
         setup_driver()
-        result = self.login()
-        if result:
-            fillresult = self.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False)
-            try:
-                driver.quit()
-            except BaseException:
-                pass
-            if fillresult:
-                return True
-            else:
-                return False
-        else:
-            return False
+        return self.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False) if self.login() else False
 
 
 # 每天执行
