@@ -253,6 +253,7 @@ def bot_start_polling():
 
 tgbot.set_my_commands([
     telebot.types.BotCommand("start", "开始使用"),
+    telebot.types.BotCommand("refresh", "刷新课表"),
     telebot.types.BotCommand("ping", "测试是否在线"),
     telebot.types.BotCommand("help", "获取指令列表"),
     telebot.types.BotCommand("schools", "获取学院列表"),
