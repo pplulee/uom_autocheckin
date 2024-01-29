@@ -4,6 +4,7 @@ import logging
 import os.path
 import random
 import re
+import signal
 import threading
 import time
 from json import loads
@@ -19,6 +20,13 @@ from ActivityType import ActivityType
 from FormLink import FormLink
 from School import School
 from Timetable import Timetable
+
+
+def handle_sigterm(*args):
+    raise KeyboardInterrupt()
+
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 formlink = FormLink()
 
@@ -582,4 +590,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("Exiting...")
+        exit(0)
