@@ -127,6 +127,7 @@ def bot_help(message):
     if check_chat_id(message):
         text = (f"可用指令：\n"
                 f"/start - 开始使用\n"
+                f"/refresh - 刷新课表\n"
                 f"/ping - 检测存活\n"
                 f"/help - 获取指令列表\n"
                 f"/schools - 获取学院列表\n"
@@ -142,6 +143,18 @@ def bot_help(message):
 def bot_schools(message):
     if check_chat_id(message):
         tgbot.reply_to(message, '可用学院：\n' + '\n'.join(School.xpath.keys()))
+
+
+@tgbot.message_handler(commands=['refresh'])
+def bot_refresh(message):
+    if check_chat_id(message):
+        if timetable is None:
+            tgbot.reply_to(message, "未设置课表订阅链接")
+        else:
+            if timetable.refresh_today():
+                tgbot.reply_to(message, "刷新成功")
+            else:
+                tgbot.reply_to(message, "刷新失败")
 
 
 @tgbot.message_handler(commands=['activities'])
@@ -500,7 +513,8 @@ class User:
     def test_login(self):
         logger.info("测试登录")
         setup_driver()
-        return self.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())), submit=False) if self.login() else False
+        return self.fillform(unit="test", type=random.choice(list(ActivityType.xpath.keys())),
+                             submit=False) if self.login() else False
 
 
 # 每天执行
@@ -520,7 +534,7 @@ def refresh_today():
         set_next_task()
         return True
     else:
-        notification("课表刷新失败", True)
+        notification("课表刷新失败，请手动刷新", True)
         return False
 
 
