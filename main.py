@@ -161,6 +161,7 @@ def bot_refresh(message):
         else:
             if timetable.refresh_today():
                 tgbot.reply_to(message, "刷新成功")
+                set_next_task()
             else:
                 tgbot.reply_to(message, "刷新失败")
 
